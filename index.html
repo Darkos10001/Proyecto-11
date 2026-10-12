@@ -3,673 +3,442 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Registros en Tiempo Real</title>
+    <title>Gestión Avanzada de Registros</title>
+    <!-- Tailwind CSS para diseño moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- SheetJS Library for real Excel (.xlsx) export -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-    </style>
+    <!-- SheetJS (XLSX) para exportar a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between">
+<body class="bg-slate-50 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <!-- HEADER / NAVEGACIÓN -->
+    <header class="bg-indigo-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
-                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                <div class="bg-indigo-600 p-2.5 rounded-xl shadow-inner border border-indigo-500">
                     <i class="fa-solid fa-address-book text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-slate-900 tracking-tight">Gestión Avanzada de Registros</h1>
-                    <p class="text-xs text-slate-500">Base de datos en tiempo real & Sincronización Excel</p>
+                    <h1 class="text-xl font-bold tracking-tight">Gestión Avanzada de Registros</h1>
+                    <p class="text-xs text-indigo-200">Base de datos en tiempo real & Sincronización Excel</p>
                 </div>
             </div>
-
-            <!-- Live Clock & Connection Status Widget -->
-            <div class="flex flex-wrap items-center gap-3">
-                <!-- Live Digital Clock -->
-                <div class="bg-slate-900 text-emerald-400 px-3 py-1.5 rounded-xl font-mono text-xs shadow-inner flex items-center space-x-2 border border-slate-800">
-                    <i class="fa-regular fa-clock animate-pulse"></i>
-                    <span id="live-clock">00:00:00</span>
+            
+            <div class="flex items-center gap-3">
+                <!-- Reloj en vivo -->
+                <div id="liveClock" class="bg-slate-900/60 px-3 py-1.5 rounded-lg text-sm font-mono tracking-wider border border-indigo-500/30">
+                    --:--:--
                 </div>
-
-                <!-- Status Badge -->
-                <div id="connection-status" class="flex items-center space-x-2 bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-full text-xs font-medium">
-                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    <span>Conectando...</span>
+                <!-- Indicador de Estado de Conexión -->
+                <div id="connectionStatus" class="flex items-center gap-2 bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-1 rounded-full text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
+                    <span id="statusText">Sin Conexión</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            <!-- Left Column: Form Section -->
-            <div class="lg:col-span-5">
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sticky top-24">
-                    <div class="flex items-center justify-between mb-5 pb-3 border-b border-slate-100">
-                        <h2 class="text-lg font-semibold text-slate-800 flex items-center space-x-2">
-                            <i class="fa-solid fa-user-plus text-indigo-600"></i>
-                            <span>Nuevo Registro</span>
-                        </h2>
-                        <span class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1 rounded-lg">En vivo</span>
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        
+        <!-- FORMULARIO DE REGISTRO (Columna Izquierda) -->
+        <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-indigo-600"></i> Nuevo Registro
+                    </h2>
+                    <span class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded-full">En vivo</span>
+                </div>
+
+                <form id="registroForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Nombre Completo *</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="nombre" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. Juan Pérez">
+                        </div>
                     </div>
 
-                    <form id="record-form" class="space-y-4" novalidate>
-                        
-                        <!-- Nombre Completo -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="nombre">Nombre Completo *</label>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Calle *</label>
                             <div class="relative">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <i class="fa-solid fa-user text-xs"></i>
-                                </span>
-                                <input type="text" id="nombre" required placeholder="Ej. Juan Pérez" 
-                                    class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                            </div>
-                            <p class="text-rose-500 text-xs mt-1 hidden" id="error-nombre">Ingresa un nombre válido.</p>
-                        </div>
-
-                        <!-- Dirección: Calle & Cruzamientos -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="calle">Calle *</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-road text-xs"></i>
-                                    </span>
-                                    <input type="text" id="calle" required placeholder="Ej. Calle 20" 
-                                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                                </div>
-                                <p class="text-rose-500 text-xs mt-1 hidden" id="error-calle">Requerido.</p>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="cruzamientos">Cruzamientos *</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-intersection text-xs"></i>
-                                    </span>
-                                    <input type="text" id="cruzamientos" required placeholder="Ej. x 15 y 17" 
-                                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                                </div>
-                                <p class="text-rose-500 text-xs mt-1 hidden" id="error-cruzamientos">Requerido.</p>
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-road"></i></span>
+                                <input type="text" id="calle" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. Calle 20">
                             </div>
                         </div>
-
-                        <!-- Número & Sección -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="numero">Número *</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-hashtag text-xs"></i>
-                                    </span>
-                                    <input type="text" id="numero" required placeholder="Ej. #412" 
-                                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                                </div>
-                                <p class="text-rose-500 text-xs mt-1 hidden" id="error-numero">Requerido.</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="seccion">Sección *</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-map-pin text-xs"></i>
-                                    </span>
-                                    <input type="text" id="seccion" required placeholder="Ej. 1024" 
-                                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                                </div>
-                                <p class="text-rose-500 text-xs mt-1 hidden" id="error-seccion">Requerido.</p>
-                            </div>
-                        </div>
-
-                        <!-- Contacto: Teléfono & Facebook -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="telefono">Teléfono *</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-phone text-xs"></i>
-                                    </span>
-                                    <input type="tel" id="telefono" required placeholder="Ej. 9861234567" 
-                                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                                </div>
-                                <p class="text-rose-500 text-xs mt-1 hidden" id="error-telefono">Requerido.</p>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="facebook">Facebook</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-brands fa-facebook text-xs"></i>
-                                    </span>
-                                    <input type="text" id="facebook" placeholder="Ej. fb.com/perfil" 
-                                        class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Fecha y Hora (Automáticas con opción de ajuste) -->
-                        <div class="grid grid-cols-2 gap-3 bg-slate-100/70 p-3 rounded-xl border border-slate-200">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="fecha">Fecha</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-calendar-day text-xs"></i>
-                                    </span>
-                                    <input type="date" id="fecha" required 
-                                        class="w-full pl-8 pr-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1" for="hora">Hora</label>
-                                <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
-                                        <i class="fa-solid fa-clock text-xs"></i>
-                                    </span>
-                                    <input type="time" id="hora" required 
-                                        class="w-full pl-8 pr-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <div class="pt-2">
-                            <button type="submit" id="submit-btn" 
-                                class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer">
-                                <i class="fa-solid fa-cloud-arrow-up"></i>
-                                <span id="submit-text">Guardar en Base de Datos</span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="lg:col-span-7">
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-                    
-                    <!-- Control Bar (Search & Live Excel Export) -->
-                    <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
                         <div>
-                            <h2 class="text-lg font-semibold text-slate-800 flex items-center space-x-2">
-                                <i class="fa-solid fa-database text-indigo-600"></i>
-                                <span>Registros Almacenados</span>
-                            </h2>
-                            <p class="text-xs text-slate-500 mt-0.5">Sincronización instantánea</p>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                            <!-- Search -->
-                            <div class="relative flex-grow sm:w-44">
-                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                    <i class="fa-solid fa-search text-xs"></i>
-                                </span>
-                                <input type="text" id="search-input" placeholder="Buscar registros..." 
-                                    class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all">
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Cruzamientos *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-code-merge"></i></span>
+                                <input type="text" id="cruzamientos" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. 15 y 17">
                             </div>
-                            <!-- Export to Excel (.xlsx) Button -->
-                            <button id="export-excel-btn" title="Exportar en vivo a Excel profesional (.xlsx)" 
-                                class="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer whitespace-nowrap">
-                                <i class="fa-solid fa-file-excel"></i>
-                                <span>Exportar Excel</span>
-                            </button>
-                            <!-- Export to Access (.accdb struct CSV) Button -->
-                            <button id="export-access-btn" title="Generar estructura compatible con Access" 
-                                class="bg-sky-700 hover:bg-sky-800 active:bg-sky-900 text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition-all shadow-sm cursor-pointer whitespace-nowrap">
-                                <i class="fa-solid fa-table"></i>
-                                <span>Exportar Access</span>
-                            </button>
                         </div>
                     </div>
 
-                    <!-- Responsive Data Table -->
-                    <div class="overflow-x-auto flex-grow max-h-[600px]">
-                        <table class="w-full text-left border-collapse min-w-[700px]">
-                            <thead class="sticky top-0 z-10 bg-slate-100 text-slate-600 text-xs uppercase tracking-wider font-semibold border-b border-slate-200">
-                                <tr>
-                                    <th class="py-3 px-3">Nombre</th>
-                                    <th class="py-3 px-3">Dirección y Ubicación</th>
-                                    <th class="py-3 px-3">Contacto / Redes</th>
-                                    <th class="py-3 px-3">Fecha y Hora</th>
-                                    <th class="py-3 px-3 text-center">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody id="records-table-body" class="divide-y divide-slate-100 text-xs">
-                                <tr id="loading-row">
-                                    <td colspan="5" class="py-12 text-center text-slate-400">
-                                        <div class="flex flex-col items-center justify-center space-y-2">
-                                            <i class="fa-solid fa-spinner animate-spin text-2xl text-indigo-600"></i>
-                                            <span>Estableciendo conexión en tiempo real...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Número *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-hashtag"></i></span>
+                                <input type="text" id="numero" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. #452">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Sección *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-map-pin"></i></span>
+                                <input type="text" id="seccion" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. Sección 3">
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Footer Counter -->
-                    <div class="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 flex justify-between items-center">
-                        <span id="total-count">Total de registros: 0</span>
-                        <span class="text-emerald-600 font-medium flex items-center space-x-1">
-                            <i class="fa-solid fa-circle text-[8px] animate-pulse"></i>
-                            <span>Firestore Conectado en Vivo</span>
-                        </span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Teléfono *</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-phone"></i></span>
+                                <input type="tel" id="telefono" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. 9861234567">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Facebook</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-brands fa-facebook"></i></span>
+                                <input type="text" id="facebook" class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Perfil o nombre">
+                            </div>
+                        </div>
                     </div>
 
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Fecha</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-calendar"></i></span>
+                                <input type="text" id="fechaRegistro" readonly class="w-full pl-10 pr-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 cursor-not-allowed">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Hora</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-clock"></i></span>
+                                <input type="text" id="horaRegistro" readonly class="w-full pl-10 pr-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-sm text-slate-600 cursor-not-allowed">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnGuardar" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Guardar en la Nube
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- TABLA Y REGISTROS (Columna Derecha) -->
+        <section class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-database text-indigo-600"></i> Registros Almacenados
+                    <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">Sincronización instantánea</span>
+                </h2>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button onclick="exportarExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button onclick="exportarAccessCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-csv"></i> Exportar Access
+                    </button>
                 </div>
             </div>
 
-        </div>
+            <!-- Buscador -->
+            <div class="mb-4">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" id="buscador" onkeyup="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Buscar por nombre, calle, sección o teléfono...">
+                </div>
+            </div>
+
+            <!-- Tabla de Datos -->
+            <div class="overflow-x-auto flex-grow rounded-xl border border-slate-200 max-h-[480px]">
+                <table id="tablaRegistros" class="w-full text-left border-collapse">
+                    <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-bold tracking-wider sticky top-0 z-10">
+                        <tr>
+                            <th class="p-3">Nombre</th>
+                            <th class="p-3">Dirección y Ubicación</th>
+                            <th class="p-3">Contacto / Redes</th>
+                            <th class="p-3">Fecha y Hora</th>
+                            <th class="p-3 text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaCuerpo" class="divide-y divide-slate-100 text-sm">
+                        <tr>
+                            <td colspan="5" class="text-center py-10 text-slate-400">
+                                <i class="fa-solid fa-spinner fa-spin text-2xl text-indigo-500 mb-2"></i>
+                                <p>Estableciendo conexión en tiempo real...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex justify-between items-center text-xs text-slate-500">
+                <span id="totalRegistros">Total de registros: 0</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Firestore Conectado en Vivo</span>
+            </div>
+        </section>
     </main>
 
-    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-        <p>Plataforma de Datos en Vivo &bull; Sincronización Cloud Automática</p>
+    <!-- FOOTER -->
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
+        Plataforma de Datos en Vivo • Sincronización Cloud Automática
     </footer>
 
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
-
-    <!-- Confirmation Modal -->
-    <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 p-6 transform scale-95 transition-transform duration-300" id="modal-container">
-            <div class="text-center">
-                <div id="modal-icon-container" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 text-rose-600 mb-4">
-                    <i id="modal-icon" class="fa-solid fa-triangle-exclamation text-lg"></i>
-                </div>
-                <h3 id="modal-title" class="text-lg font-bold text-slate-900 mb-1">Confirmar acción</h3>
-                <p id="modal-message" class="text-sm text-slate-500 mb-6">¿Estás seguro de continuar?</p>
-                <div id="modal-actions" class="flex space-x-3">
-                    <button id="modal-cancel" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer">Cancelar</button>
-                    <button id="modal-confirm" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-medium py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer">Eliminar</button>
-                </div>
-            </div>
-        </div>
+    <!-- Notificación Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
+    <!-- SCRIPTS DE FIREBASE (Versión SDK Web Modular compatible con CDN) -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-data-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "demo-key",
-            authDomain: "demo.firebaseapp.com",
-            projectId: "demo-project",
-            storageBucket: "demo.appspot.com",
-            messagingSenderId: "123456",
-            appId: "1:123:web:abc"
+        // Tus credenciales oficiales de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
+            authDomain: "proyecto-11-1950e.firebaseapp.com",
+            databaseURL: "https://proyecto-11-1950e-default-rtdb.firebaseio.com",
+            projectId: "proyecto-11-1950e",
+            storageBucket: "proyecto-11-1950e.firebasestorage.app",
+            messagingSenderId: "604758045583",
+            appId: "1:604758045583:web:f352dde37bbdb397e6d1fa",
+            measurementId: "G-P19J0Q4ZR8"
         };
 
+        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const auth = getAuth(app);
 
-        let allRecords = [];
-        let currentUserId = null;
+        // Actualizar reloj y campos de fecha/hora en vivo
+        function actualizarTiempo() {
+            const ahora = new Date();
+            const opcionesFecha = { year: 'numeric', month: '2-digit', day: '2-digit' };
+            const opcionesHora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
 
-        const recordForm = document.getElementById('record-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const submitText = document.getElementById('submit-text');
-        const tableBody = document.getElementById('records-table-body');
-        const totalCount = document.getElementById('total-count');
-        const searchInput = document.getElementById('search-input');
-        const exportExcelBtn = document.getElementById('export-excel-btn');
-        const exportAccessBtn = document.getElementById('export-access-btn');
-        const fechaInput = document.getElementById('fecha');
-        const horaInput = document.getElementById('hora');
-        const liveClockEl = document.getElementById('live-clock');
-
-        const customModal = document.getElementById('custom-modal');
-        const modalContainer = document.getElementById('modal-container');
-        const modalTitle = document.getElementById('modal-title');
-        const modalMessage = document.getElementById('modal-message');
-        const modalIconContainer = document.getElementById('modal-icon-container');
-        const modalIcon = document.getElementById('modal-icon');
-        const modalConfirm = document.getElementById('modal-confirm');
-        const modalCancel = document.getElementById('modal-cancel');
-
-        // Live Digital Clock & Auto Timestamp Update
-        function updateLiveClock() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            liveClockEl.textContent = `${hours}:${minutes}:${seconds}`;
+            document.getElementById('fechaRegistro').value = ahora.toLocaleDateString('es-MX', opcionesFecha);
+            document.getElementById('horaRegistro').value = ahora.toLocaleTimeString('es-MX', opcionesHora);
+            document.getElementById('liveClock').textContent = ahora.toLocaleTimeString('es-MX');
         }
-        setInterval(updateLiveClock, 1000);
-        updateLiveClock();
+        setInterval(actualizarTiempo, 1000);
+        actualizarTiempo();
 
-        function setDefaultTimestamp() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
+        // Mostrar notificación tipo Toast
+        window.mostrarToast = function(mensaje, tipo = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
 
-            fechaInput.value = `${year}-${month}-${day}`;
-            horaInput.value = `${hours}:${minutes}`;
-        }
+            toastMsg.textContent = mensaje;
+            if(tipo === 'success') {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            } else {
+                toastIcon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-lg";
+            }
 
-        function showToast(message, type = 'success') {
-            const toastContainer = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const bgClass = type === 'success' ? 'bg-emerald-600' : 'bg-rose-600';
-            const icon = type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation';
-
-            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg text-xs font-medium flex items-center space-x-2 transition-all transform translate-y-2 opacity-0 pointer-events-auto`;
-            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
-            
-            toastContainer.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            toast.classList.remove('translate-y-20', 'opacity-0');
             setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
+                toast.classList.add('translate-y-20', 'opacity-0');
             }, 3000);
         }
 
-        function showModal({ title, message, type = 'danger', onConfirm }) {
-            modalTitle.textContent = title;
-            modalMessage.textContent = message;
-            
-            if (type === 'danger') {
-                modalIconContainer.className = "mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-100 text-rose-600 mb-4";
-                modalIcon.className = "fa-solid fa-triangle-exclamation text-lg";
-                modalConfirm.className = "flex-1 bg-rose-600 hover:bg-rose-700 text-white font-medium py-2.5 px-4 rounded-xl text-xs transition-all cursor-pointer";
-                modalConfirm.textContent = "Eliminar";
-            }
+        // Cambiar indicador de estado a Conectado
+        const statusText = document.getElementById('statusText');
+        const connectionStatus = document.getElementById('connectionStatus');
+        statusText.textContent = "Conectado en Vivo";
+        connectionStatus.className = "flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-medium";
+        connectionStatus.querySelector('span').className = "w-2 h-2 rounded-full bg-emerald-400";
 
-            customModal.classList.remove('hidden');
-            setTimeout(() => {
-                customModal.classList.remove('opacity-0');
-                modalContainer.classList.remove('scale-95');
-            }, 10);
+        // Referencia a la colección en Firestore
+        const coleccionRef = collection(db, "registros");
 
-            const handleConfirm = () => {
-                closeModal();
-                if (onConfirm) onConfirm();
-                modalConfirm.removeEventListener('click', handleConfirm);
-            };
-            modalConfirm.onclick = handleConfirm;
-        }
+        // Guardar Datos en Firestore
+        const form = document.getElementById('registroForm');
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardar');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
 
-        function closeModal() {
-            customModal.classList.add('opacity-0');
-            modalContainer.classList.add('scale-95');
-            setTimeout(() => customModal.classList.add('hidden'), 300);
-        }
-        modalCancel.onclick = closeModal;
-
-        async function initializeAuth() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Auth error:", err);
-                try { await signInAnonymously(auth); } catch (e) {}
-            }
-        }
+                await addDoc(coleccionRef, {
+                    nombre: document.getElementById('nombre').value.trim(),
+                    calle: document.getElementById('calle').value.trim(),
+                    cruzamientos: document.getElementById('cruzamientos').value.trim(),
+                    numero: document.getElementById('numero').value.trim(),
+                    seccion: document.getElementById('seccion').value.trim(),
+                    telefono: document.getElementById('telefono').value.trim(),
+                    facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
+                    fecha: document.getElementById('fechaRegistro').value,
+                    hora: document.getElementById('horaRegistro').value,
+                    timestamp: serverTimestamp()
+                });
 
-        onAuthStateChanged(auth, (user) => {
-            const statusEl = document.getElementById('connection-status');
-            if (user) {
-                currentUserId = user.uid;
-                statusEl.className = "flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium";
-                statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Firestore En Vivo</span>`;
-                setupFirestoreListener();
-            } else {
-                statusEl.className = "flex items-center space-x-2 bg-rose-50 border border-rose-200 text-rose-700 px-3 py-1.5 rounded-full text-xs font-medium";
-                statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>Sin Conexión</span>`;
+                form.reset();
+                actualizarTiempo();
+                mostrarToast('¡Registro guardado correctamente en la nube!');
+            } catch (error) {
+                console.error("Error al guardar: ", error);
+                mostrarToast('Error al guardar el registro', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en la Nube`;
             }
         });
 
-        function setupFirestoreListener() {
-            if (!currentUserId) return;
-            // Mandated collaborative path (Rule 1)
-            const recordsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'registros_v2');
-            
-            onSnapshot(recordsCollection, (snapshot) => {
-                allRecords = [];
-                snapshot.forEach((docSnap) => {
-                    allRecords.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                renderTable(allRecords);
-            }, (error) => {
-                console.error("Firestore snapshot error:", error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-rose-500 text-xs">Error de sincronización con la base de datos.</td></tr>`;
-            });
-        }
+        // Escuchar datos en tiempo real (Real-time listener)
+        let listaGlobalRegistros = [];
+        onSnapshot(coleccionRef, (snapshot) => {
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+            listaGlobalRegistros = [];
 
-        function renderTable(records) {
-            const searchTerm = searchInput.value.toLowerCase().trim();
-            const filtered = records.filter(r => 
-                (r.nombre && r.nombre.toLowerCase().includes(searchTerm)) ||
-                (r.calle && r.calle.toLowerCase().includes(searchTerm)) ||
-                (r.cruzamientos && r.cruzamientos.toLowerCase().includes(searchTerm)) ||
-                (r.seccion && r.seccion.toLowerCase().includes(searchTerm)) ||
-                (r.telefono && r.telefono.toLowerCase().includes(searchTerm)) ||
-                (r.facebook && r.facebook.toLowerCase().includes(searchTerm))
-            );
-
-            totalCount.textContent = `Total de registros: ${filtered.length}`;
-
-            if (filtered.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="py-12 text-center text-slate-400">
-                            <div class="flex flex-col items-center justify-center space-y-2">
-                                <i class="fa-solid fa-folder-open text-3xl text-slate-300"></i>
-                                <span>No hay registros disponibles</span>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            if (snapshot.empty) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-10 text-slate-400">No hay registros guardados todavía.</td></tr>`;
+                document.getElementById('totalRegistros').textContent = 'Total de registros: 0';
                 return;
             }
 
-            tableBody.innerHTML = filtered.map(r => `
-                <tr class="hover:bg-slate-50/80 transition-colors">
-                    <td class="py-3 px-3">
-                        <div class="font-semibold text-slate-900">${escapeHtml(r.nombre || '')}</div>
-                        <div class="text-[10px] text-slate-400">ID: ${r.id.substring(0,6)}...</div>
+            snapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                listaGlobalRegistros.push({ id: docSnap.id, ...data });
+            });
+
+            renderizarTabla(listaGlobalRegistros);
+        });
+
+        function renderizarTabla(datos) {
+            const tbody = document.getElementById('tablaCuerpo');
+            tbody.innerHTML = '';
+
+            datos.forEach((item) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-800">${item.nombre}</td>
+                    <td class="p-3 text-slate-600 text-xs">
+                        <span class="font-medium text-slate-700">Calle:</span> ${item.calle} #${item.numero}<br>
+                        <span class="font-medium text-slate-700">Cruzamientos:</span> ${item.cruzamientos}<br>
+                        <span class="font-medium text-slate-700">Sección:</span> ${item.seccion}
                     </td>
-                    <td class="py-3 px-3">
-                        <div class="text-slate-700 font-medium">${escapeHtml(r.calle || '')} #${escapeHtml(r.numero || '')}</div>
-                        <div class="text-[11px] text-slate-500">Cruzamientos: ${escapeHtml(r.cruzamientos || 'N/A')}</div>
-                        <span class="inline-block mt-1 bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-semibold">Sec: ${escapeHtml(r.seccion || '')}</span>
+                    <td class="p-3 text-slate-600 text-xs">
+                        <span class="font-medium text-slate-700"><i class="fa-solid fa-phone text-[10px]"></i></span> ${item.telefono}<br>
+                        <span class="font-medium text-slate-700"><i class="fa-brands fa-facebook text-[10px]"></i></span> ${item.facebook}
                     </td>
-                    <td class="py-3 px-3">
-                        <div class="flex items-center space-x-1 text-slate-700">
-                            <i class="fa-solid fa-phone text-[10px] text-slate-400"></i>
-                            <span>${escapeHtml(r.telefono || 'N/A')}</span>
-                        </div>
-                        ${r.facebook ? `
-                            <div class="flex items-center space-x-1 text-indigo-600 mt-0.5 truncate max-w-[130px]">
-                                <i class="fa-brands fa-facebook text-[10px]"></i>
-                                <span class="truncate" title="${escapeHtml(r.facebook)}">${escapeHtml(r.facebook)}</span>
-                            </div>
-                        ` : ''}
+                    <td class="p-3 text-slate-500 text-xs whitespace-nowrap">
+                        <span class="font-medium text-slate-700">${item.fecha}</span><br>
+                        ${item.hora}
                     </td>
-                    <td class="py-3 px-3 text-slate-600">
-                        <div><i class="fa-regular fa-calendar text-[10px] text-slate-400 mr-1"></i>${escapeHtml(r.fecha || '')}</div>
-                        <div class="text-[11px] text-slate-400"><i class="fa-regular fa-clock text-[10px] mr-1"></i>${escapeHtml(r.hora || '')}</div>
-                    </td>
-                    <td class="py-3 px-3 text-center">
-                        <button onclick="window.confirmDelete('${r.id}')" title="Eliminar registro" 
-                            class="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all cursor-pointer">
+                    <td class="p-3 text-center">
+                        <button onclick="eliminarRegistro('${item.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 p-2 rounded-xl transition" title="Eliminar registro">
                             <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </td>
-                </tr>
-            `).join('');
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('totalRegistros').textContent = `Total de registros: ${datos.length}`;
         }
 
-        function escapeHtml(str) {
-            return String(str).replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
-        }
-
-        searchInput.addEventListener('input', () => renderTable(allRecords));
-
-        recordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const nombre = document.getElementById('nombre').value.trim();
-            const calle = document.getElementById('calle').value.trim();
-            const cruzamientos = document.getElementById('cruzamientos').value.trim();
-            const numero = document.getElementById('numero').value.trim();
-            const seccion = document.getElementById('seccion').value.trim();
-            const telefono = document.getElementById('telefono').value.trim();
-            const facebook = document.getElementById('facebook').value.trim();
-            const fecha = fechaInput.value;
-            const hora = horaInput.value;
-
-            let isValid = true;
-            const checkField = (val, errId) => {
-                if (!val) {
-                    document.getElementById(errId).classList.remove('hidden');
-                    isValid = false;
-                } else {
-                    document.getElementById(errId).classList.add('hidden');
+        // Función global para eliminar registro
+        window.eliminarRegistro = async function(id) {
+            if(confirm('¿Estás seguro de que deseas eliminar este registro permanentemente de la base de datos?')) {
+                try {
+                    await deleteDoc(doc(db, "registros", id));
+                    mostrarToast('Registro eliminado correctamente');
+                } catch (error) {
+                    console.error("Error al eliminar: ", error);
+                    mostrarToast('No se pudo eliminar el registro', 'error');
                 }
-            };
-
-            checkField(nombre, 'error-nombre');
-            checkField(calle, 'error-calle');
-            checkField(cruzamientos, 'error-cruzamientos');
-            checkField(numero, 'error-numero');
-            checkField(seccion, 'error-seccion');
-            checkField(telefono, 'error-telefono');
-
-            if (!isValid) return;
-
-            submitBtn.disabled = true;
-            submitBtn.className = "w-full bg-indigo-400 text-white font-medium py-3 px-4 rounded-xl shadow-md cursor-not-allowed flex items-center justify-center space-x-2";
-            submitText.textContent = "Guardando en la nube...";
-
-            try {
-                const recordsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'registros_v2');
-                await addDoc(recordsCollection, {
-                    nombre,
-                    calle,
-                    cruzamientos,
-                    numero,
-                    seccion,
-                    telefono,
-                    facebook,
-                    fecha,
-                    hora,
-                    createdAt: new Date().toISOString(),
-                    userId: currentUserId
-                });
-
-                showToast("¡Registro guardado en Firestore exitosamente!", "success");
-                recordForm.reset();
-                setDefaultTimestamp();
-            } catch (err) {
-                console.error("Error saving document:", err);
-                showToast("Error al guardar en la base de datos", "error");
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.className = "w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer";
-                submitText.textContent = "Guardar en Base de Datos";
             }
-        });
+        }
 
-        // Professional Excel (.xlsx) export using SheetJS
-        exportExcelBtn.addEventListener('click', () => {
-            if (allRecords.length === 0) {
-                showToast("No hay registros para exportar", "error");
+        // Función de búsqueda en vivo en la tabla
+        window.filtrarRegistros = function() {
+            const texto = document.getElementById('buscador').value.toLowerCase();
+            const filtrados = listaGlobalRegistros.filter(item => 
+                item.nombre.toLowerCase().includes(texto) ||
+                item.calle.toLowerCase().includes(texto) ||
+                item.seccion.toLowerCase().includes(texto) ||
+                item.telefono.toLowerCase().includes(texto)
+            );
+            renderizarTabla(filtrados);
+        }
+
+        // Exportar a Excel (.xlsx) profesional
+        window.exportarExcel = function() {
+            if(listaGlobalRegistros.length === 0) {
+                mostrarToast('No hay datos para exportar', 'error');
                 return;
             }
-
-            const dataToExport = allRecords.map((r, idx) => ({
-                "No.": idx + 1,
-                "Nombre Completo": r.nombre || '',
-                "Calle": r.calle || '',
-                "Número": r.numero || '',
-                "Cruzamientos": r.cruzamientos || '',
-                "Sección": r.seccion || '',
-                "Teléfono": r.telefono || '',
-                "Facebook": r.facebook || '',
-                "Fecha de Registro": r.fecha || '',
-                "Hora de Registro": r.hora || ''
+            const datosLimpios = listaGlobalRegistros.map((item, index) => ({
+                "No.": index + 1,
+                "Nombre Completo": item.nombre,
+                "Calle": item.calle,
+                "Cruzamientos": item.cruzamientos,
+                "Número": item.numero,
+                "Sección": item.seccion,
+                "Teléfono": item.telefono,
+                "Facebook": item.facebook,
+                "Fecha de Registro": item.fecha,
+                "Hora de Registro": item.hora
             }));
 
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const worksheet = XLSX.utils.json_to_sheet(datosLimpios);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Registros");
+            XLSX.writeFile(workbook, "BaseDeDatos_Registros.xlsx");
+            mostrarToast('Archivo Excel descargado con éxito');
+        }
 
-            // Auto-fit column widths
-            const maxWidth = Object.keys(dataToExport[0]).map(key => ({
-                wch: Math.max(key.length, ...dataToExport.map(row => String(row[key] || '').length)) + 3
-            }));
-            worksheet['!cols'] = maxWidth;
-
-            XLSX.writeFile(workbook, `BaseDeDatos_Registros_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast("Archivo Excel (.xlsx) generado con éxito", "success");
-        });
-
-        // Export Access compatible structure (Structured CSV/TSV importable by Access)
-        exportAccessBtn.addEventListener('click', () => {
-            if (allRecords.length === 0) {
-                showToast("No hay registros para exportar", "error");
+        // Exportar formato compatible con Access / CSV
+        window.exportarAccessCSV = function() {
+            if(listaGlobalRegistros.length === 0) {
+                mostrarToast('No hay datos para exportar', 'error');
                 return;
             }
+            let csvContent = "data:text/csv;charset=utf-8,ID,Nombre,Calle,Cruzamientos,Numero,Seccion,Telefono,Facebook,Fecha,Hora\r\n";
+            listaGlobalRegistros.forEach((item, index) => {
+                let row = [
+                    index + 1,
+                    `"${item.nombre}"`,
+                    `"${item.calle}"`,
+                    `"${item.cruzamientos}"`,
+                    `"${item.numero}"`,
+                    `"${item.seccion}"`,
+                    `"${item.telefono}"`,
+                    `"${item.facebook}"`,
+                    `"${item.fecha}"`,
+                    `"${item.hora}"`
+                ].join(",");
+                csvContent += row + "\r\n";
+            });
 
-            const headers = ["ID", "Nombre", "Calle", "Numero", "Cruzamientos", "Seccion", "Telefono", "Facebook", "Fecha", "Hora"];
-            const rows = allRecords.map(r => [
-                `"${r.id}"`,
-                `"${(r.nombre || '').replace(/"/g, '""')}"`,
-                `"${(r.calle || '').replace(/"/g, '""')}"`,
-                `"${(r.numero || '').replace(/"/g, '""')}"`,
-                `"${(r.cruzamientos || '').replace(/"/g, '""')}"`,
-                `"${(r.seccion || '').replace(/"/g, '""')}"`,
-                `"${(r.telefono || '').replace(/"/g, '""')}"`,
-                `"${(r.facebook || '').replace(/"/g, '""')}"`,
-                `"${(r.fecha || '').replace(/"/g, '""')}"`,
-                `"${(r.hora || '').replace(/"/g, '""')}"`
-            ]);
-
-            const csvContent = "\uFEFF" + [headers.join("\t"), ...rows.map(e => e.join("\t"))].join("\n");
-            const blob = new Blob([csvContent], { type: "text/tab-separated-values;charset=utf-8;" });
-            const url = URL.createObjectURL(blob);
+            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Access_Import_${new Date().toISOString().slice(0,10)}.txt`);
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Registros_Access_Compatible.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            showToast("Estructura compatible con Access generada", "success");
-        });
-
-        window.confirmDelete = function(id) {
-            showModal({
-                title: 'Eliminar Registro',
-                message: '¿Estás seguro de eliminar este registro de la base de datos?',
-                type: 'danger',
-                onConfirm: async () => {
-                    try {
-                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'registros_v2', `data`, id); // handled correctly in root collection path
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'registros_v2', id));
-                        showToast("Registro eliminado con éxito", "success");
-                    } catch (err) {
-                        console.error("Error deleting doc:", err);
-                        showToast("Error al eliminar", "error");
-                    }
-                }
-            });
-        };
-
-        window.onload = () => {
-            setDefaultTimestamp();
-            initializeAuth();
-        };
+            mostrarToast('Archivo CSV compatible con Access descargado');
+        }
     </script>
 </body>
 </html>
