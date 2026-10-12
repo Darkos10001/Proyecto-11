@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Avanzada de Registros - Acceso y Usuarios</title>
+    <title>Gestión Avanzada de Registros - Panel de Colaboradores</title>
     <!-- Tailwind CSS para diseño moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para iconos -->
@@ -26,10 +26,10 @@
 
             <form id="loginForm" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Usuario / Correo</label>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Usuario</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
-                        <input type="text" id="loginUser" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. Admin o correo@dominio.com">
+                        <input type="text" id="loginUser" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. Admin">
                     </div>
                 </div>
 
@@ -52,6 +52,30 @@
         </div>
     </div>
 
+    <!-- MODAL DE GESTIÓN DE COLABORADORES -->
+    <div id="modalColaboradores" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
+                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-users-gear text-indigo-600"></i> Gestión de Cuentas Colaboradoras
+                </h3>
+                <button onclick="cerrarModalColaboradores()" class="text-slate-400 hover:text-slate-600 text-sm">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto flex-grow space-y-3 pr-1" id="listaColaboradoresCuerpo">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+                <button onclick="cerrarModalColaboradores()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2 px-4 rounded-xl transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- HEADER / NAVEGACIÓN -->
     <header class="bg-indigo-700 text-white shadow-md">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -61,7 +85,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">Gestión Avanzada de Registros</h1>
-                    <p class="text-xs text-indigo-200">Base de datos en tiempo real & Control de Usuarios</p>
+                    <p class="text-xs text-indigo-200">Panel de Control & Cuentas Colaboradoras</p>
                 </div>
             </div>
             
@@ -70,8 +94,12 @@
                 <div id="liveClock" class="bg-slate-900/60 px-3 py-1.5 rounded-lg text-sm font-mono tracking-wider border border-indigo-500/30">
                     --:--:--
                 </div>
+                <!-- Botón Ver Colaboradores -->
+                <button onclick="abrirModalColaboradores()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-users"></i> Colaboradores
+                </button>
                 <!-- Botón Cerrar Sesión -->
-                <button onclick="cerrarSesion()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow transition flex items-center gap-1.5">
+                <button onclick="cerrarSesion()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-power-off"></i> Salir
                 </button>
             </div>
@@ -81,7 +109,7 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
         
-        <!-- FORMULARIO DE REGISTRO Y GESTIÓN DE USUARIOS (Columna Izquierda) -->
+        <!-- FORMULARIO DE REGISTRO Y CONFIGURACIÓN (Columna Izquierda) -->
         <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
             <div>
                 <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
@@ -174,11 +202,11 @@
                 </form>
             </div>
 
-            <!-- Panel para Crear Nuevos Usuarios -->
-            <div class="mt-6 pt-4 border-t border-slate-100">
+            <!-- Panel para Crear Nuevos Usuarios y Cambiar Contraseña Propia -->
+            <div class="mt-6 pt-4 border-t border-slate-100 space-y-4">
                 <details class="group">
                     <summary class="text-xs font-bold text-indigo-600 cursor-pointer flex items-center gap-1.5 list-none">
-                        <i class="fa-solid fa-user-gear"></i> Registrar nuevo usuario colaborador <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
+                        <i class="fa-solid fa-user-plus"></i> Registrar nuevo usuario colaborador <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
                     </summary>
                     <form id="crearUsuarioForm" class="mt-3 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                         <div>
@@ -190,7 +218,22 @@
                             <input type="password" id="nuevoPass" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
                         </div>
                         <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-user-plus"></i> Crear Cuenta
+                            <i class="fa-solid fa-user-check"></i> Crear Cuenta
+                        </button>
+                    </form>
+                </details>
+
+                <details class="group">
+                    <summary class="text-xs font-bold text-slate-600 cursor-pointer flex items-center gap-1.5 list-none">
+                        <i class="fa-solid fa-key"></i> Cambiar mi contraseña <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
+                    </summary>
+                    <form id="cambiarPassForm" class="mt-3 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Nueva Contraseña</label>
+                            <input type="password" id="passActualizar" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-floppy-disk"></i> Actualizar Clave
                         </button>
                     </form>
                 </details>
@@ -255,7 +298,7 @@
 
     <!-- FOOTER -->
     <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        Plataforma de Datos en Vivo • Gestión de Usuarios Integrada
+        Plataforma de Datos en Vivo • Gestión Completa de Usuarios
     </footer>
 
     <!-- Notificación Toast -->
@@ -264,7 +307,7 @@
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- SCRIPTS DE FIREBASE Y GESTIÓN DE USUARIOS LOCALES -->
+    <!-- SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -285,7 +328,7 @@
             localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
         });
 
-        // GESTIÓN DE USUARIOS (Almacenados en el navegador del dispositivo)
+        // GESTIÓN DE USUARIOS
         let usuariosDB = JSON.parse(localStorage.getItem('usuariosApp')) || {
             "Admin": "admin1234"
         };
@@ -296,7 +339,6 @@
         const loginForm = document.getElementById('loginForm');
         const loginError = document.getElementById('loginError');
 
-        // Verificar si ya hay sesión activa
         if (usuarioActual && usuariosDB[usuarioActual]) {
             loginModal.classList.add('hidden');
             document.getElementById('currentUserBadge').textContent = usuarioActual;
@@ -345,6 +387,80 @@
             mostrarToast(`¡Usuario ${nuevoUser} creado con éxito!`);
             document.getElementById('crearUsuarioForm').reset();
         });
+
+        // Cambiar Contraseña Propia
+        document.getElementById('cambiarPassForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const nuevaPass = document.getElementById('passActualizar').value.trim();
+
+            if (usuarioActual && usuariosDB[usuarioActual]) {
+                usuariosDB[usuarioActual] = nuevaPass;
+                localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
+                mostrarToast('¡Contraseña actualizada con éxito!');
+                document.getElementById('cambiarPassForm').reset();
+            }
+        });
+
+        // MODAL DE COLABORADORES
+        window.abrirModalColaboradores = function() {
+            renderizarListaColaboradores();
+            document.getElementById('modalColaboradores').classList.remove('hidden');
+        }
+
+        window.cerrarModalColaboradores = function() {
+            document.getElementById('modalColaboradores').classList.add('hidden');
+        }
+
+        function renderizarListaColaboradores() {
+            const contenedor = document.getElementById('listaColaboradoresCuerpo');
+            contenedor.innerHTML = '';
+
+            const usuariosKeys = Object.keys(usuariosDB);
+            if(usuariosKeys.length === 0) {
+                contenedor.innerHTML = `<p class="text-center text-slate-400 py-6 text-sm">No hay cuentas registradas.</p>`;
+                return;
+            }
+
+            usuariosKeys.forEach((user) => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm";
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-800">${user}</span> ${user === usuarioActual ? '<span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">Tú</span>' : ''}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="modificarPassColaborador('${user}')" class="bg-amber-50 text-amber-600 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition" title="Cambiar Contraseña">
+                            <i class="fa-solid fa-key"></i> Modificar
+                        </button>
+                        ${user !== 'Admin' && user !== usuarioActual ? `
+                            <button onclick="eliminarColaborador('${user}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition" title="Eliminar cuenta">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+        window.modificarPassColaborador = function(user) {
+            const nuevaClave = prompt(`Ingresa la nueva contraseña para el usuario "${user}":`);
+            if (nuevaClave && nuevaClave.trim() !== '') {
+                usuariosDB[user] = nuevaClave.trim();
+                localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
+                mostrarToast(`Contraseña de ${user} actualizada`);
+                renderizarListaColaboradores();
+            }
+        }
+
+        window.eliminarColaborador = function(user) {
+            if(confirm(`¿Estás seguro de eliminar al usuario "${user}"?`)) {
+                delete usuariosDB[user];
+                localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
+                mostrarToast(`Usuario ${user} eliminado`);
+                renderizarListaColaboradores();
+            }
+        }
 
         function actualizarTiempo() {
             const ahora = new Date();
