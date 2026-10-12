@@ -37,7 +37,10 @@
                     <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contraseña</label>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-key"></i></span>
-                        <input type="password" id="loginPassword" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="••••••••">
+                        <input type="password" id="loginPassword" required class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="••••••••">
+                        <button type="button" onclick="togglePassword('loginPassword', 'eyeIconLogin')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
+                            <i id="eyeIconLogin" class="fa-solid fa-eye"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -216,7 +219,12 @@
                         </div>
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Contraseña</label>
-                            <input type="password" id="nuevoPass" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                            <div class="relative">
+                                <input type="password" id="nuevoPass" required class="w-full px-3 py-2 pr-8 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                                <button type="button" onclick="togglePassword('nuevoPass', 'eyeIconNuevo')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none text-xs">
+                                    <i id="eyeIconNuevo" class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                         <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-user-check"></i> Crear Cuenta en la Nube
@@ -232,7 +240,12 @@
                     <form id="cambiarPassForm" class="mt-3 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Nueva Contraseña</label>
-                            <input type="password" id="passActualizar" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                            <div class="relative">
+                                <input type="password" id="passActualizar" required class="w-full px-3 py-2 pr-8 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                                <button type="button" onclick="togglePassword('passActualizar', 'eyeIconActualizar')" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none text-xs">
+                                    <i id="eyeIconActualizar" class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
                         <button type="submit" class="w-full bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
                             <i class="fa-solid fa-floppy-disk"></i> Actualizar en la Nube
@@ -312,7 +325,7 @@
     <!-- SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, updateDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
@@ -333,11 +346,19 @@
         let usuarioActual = localStorage.getItem('usuarioActual') || null;
         let listaUsuariosCloud = {};
 
-        const loginModal = document.getElementById('loginModal');
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
+        // Función global para alternar la visibilidad de la contraseña con el icono del ojo
+        window.togglePassword = function(idInput, idIcon) {
+            const input = document.getElementById(idInput);
+            const icon = document.getElementById(idIcon);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.className = "fa-solid fa-eye-slash";
+            } else {
+                input.type = "password";
+                icon.className = "fa-solid fa-eye";
+            }
+        };
 
-        // Escuchar usuarios en tiempo real desde Firestore
         const usuariosRef = collection(db, "usuarios");
         onSnapshot(usuariosRef, async (snapshot) => {
             listaUsuariosCloud = {};
@@ -345,18 +366,16 @@
                 listaUsuariosCloud[docSnap.id] = docSnap.data().password;
             });
 
-            // Si Firestore está vacío, creamos la cuenta 'Admin' por defecto automáticamente
             if (Object.keys(listaUsuariosCloud).length === 0) {
                 await setDoc(doc(db, "usuarios", "Admin"), { password: "admin1234" });
                 listaUsuariosCloud["Admin"] = "admin1234";
             }
 
-            // Verificar si el usuario actual sigue teniendo sesión válida
             if (usuarioActual) {
                 if (listaUsuariosCloud[usuarioActual]) {
                     actualizarPermisosUI();
                 } else {
-                    cerrarSesion(); // Si el admin lo borró, cierra sesión
+                    cerrarSesion();
                 }
             }
         });
@@ -373,6 +392,10 @@
                 secCrearUser.classList.add('hidden');
             }
         }
+
+        const loginModal = document.getElementById('loginModal');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
 
         if (usuarioActual) {
             loginModal.classList.add('hidden');
@@ -408,7 +431,6 @@
             mostrarToast('Has salido del sistema');
         };
 
-        // Crear Nuevos Usuarios en Firestore
         document.getElementById('crearUsuarioForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (usuarioActual !== 'Admin') {
@@ -434,7 +456,6 @@
             }
         });
 
-        // Cambiar Contraseña Propia en Firestore
         document.getElementById('cambiarPassForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const nuevaPass = document.getElementById('passActualizar').value.trim();
@@ -451,7 +472,6 @@
             }
         });
 
-        // MODAL DE COLABORADORES
         window.abrirModalColaboradores = function() {
             if (usuarioActual !== 'Admin') return;
             renderizarListaColaboradores();
@@ -553,7 +573,6 @@
 
         const coleccionRef = collection(db, "registros");
 
-        // Guardar Datos
         const form = document.getElementById('registroForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
