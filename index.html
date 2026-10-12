@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Avanzada de Registros - Panel de Colaboradores</title>
+    <title>Gestión Avanzada de Registros - Nube Firestore</title>
     <!-- Tailwind CSS para diseño moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para iconos -->
@@ -21,7 +21,7 @@
                     <i class="fa-solid fa-user-shield text-2xl"></i>
                 </div>
                 <h2 class="text-xl font-bold text-slate-900">Iniciar Sesión</h2>
-                <p class="text-xs text-slate-500 mt-1">Ingresa tus credenciales para acceder al sistema</p>
+                <p class="text-xs text-slate-500 mt-1">Ingresa tus credenciales en la nube</p>
             </div>
 
             <form id="loginForm" class="space-y-4">
@@ -57,7 +57,7 @@
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
                 <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-users-gear text-indigo-600"></i> Gestión de Cuentas Colaboradoras
+                    <i class="fa-solid fa-users-gear text-indigo-600"></i> Gestión de Cuentas en la Nube
                 </h3>
                 <button onclick="cerrarModalColaboradores()" class="text-slate-400 hover:text-slate-600 text-sm">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -65,7 +65,7 @@
             </div>
 
             <div class="overflow-y-auto flex-grow space-y-3 pr-1" id="listaColaboradoresCuerpo">
-                <!-- Se llena dinámicamente -->
+                <!-- Se llena dinámicamente desde Firestore -->
             </div>
 
             <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
@@ -85,7 +85,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">Gestión Avanzada de Registros</h1>
-                    <p class="text-xs text-indigo-200">Panel de Control & Cuentas Colaboradoras</p>
+                    <p class="text-xs text-indigo-200">Sincronización Total en la Nube</p>
                 </div>
             </div>
             
@@ -219,12 +219,12 @@
                             <input type="password" id="nuevoPass" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
                         </div>
                         <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-user-check"></i> Crear Cuenta
+                            <i class="fa-solid fa-user-check"></i> Crear Cuenta en la Nube
                         </button>
                     </form>
                 </details>
 
-                <!-- Cambiar Contraseña Propia (Disponible para todos) -->
+                <!-- Cambiar Contraseña Propia -->
                 <details class="group">
                     <summary class="text-xs font-bold text-slate-600 cursor-pointer flex items-center gap-1.5 list-none">
                         <i class="fa-solid fa-key"></i> Cambiar mi contraseña <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
@@ -235,7 +235,7 @@
                             <input type="password" id="passActualizar" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
                         </div>
                         <button type="submit" class="w-full bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-floppy-disk"></i> Actualizar Clave
+                            <i class="fa-solid fa-floppy-disk"></i> Actualizar en la Nube
                         </button>
                     </form>
                 </details>
@@ -293,14 +293,14 @@
 
             <div class="mt-4 flex justify-between items-center text-xs text-slate-500">
                 <span id="totalRegistros">Total de registros: 0</span>
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado en Vivo</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado a Firestore</span>
             </div>
         </section>
     </main>
 
     <!-- FOOTER -->
     <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        Plataforma de Datos en Vivo • Control de Permisos por Rol
+        Plataforma de Datos en Vivo • Sincronización en la Nube
     </footer>
 
     <!-- Notificación Toast -->
@@ -312,7 +312,7 @@
     <!-- SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, updateDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
@@ -330,22 +330,41 @@
             localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
         });
 
-        // GESTIÓN DE USUARIOS
-        let usuariosDB = JSON.parse(localStorage.getItem('usuariosApp')) || {
-            "Admin": "admin1234"
-        };
-
         let usuarioActual = localStorage.getItem('usuarioActual') || null;
+        let listaUsuariosCloud = {};
 
         const loginModal = document.getElementById('loginModal');
         const loginForm = document.getElementById('loginForm');
         const loginError = document.getElementById('loginError');
 
+        // Escuchar usuarios en tiempo real desde Firestore
+        const usuariosRef = collection(db, "usuarios");
+        onSnapshot(usuariosRef, async (snapshot) => {
+            listaUsuariosCloud = {};
+            snapshot.forEach((docSnap) => {
+                listaUsuariosCloud[docSnap.id] = docSnap.data().password;
+            });
+
+            // Si Firestore está vacío, creamos la cuenta 'Admin' por defecto automáticamente
+            if (Object.keys(listaUsuariosCloud).length === 0) {
+                await setDoc(doc(db, "usuarios", "Admin"), { password: "admin1234" });
+                listaUsuariosCloud["Admin"] = "admin1234";
+            }
+
+            // Verificar si el usuario actual sigue teniendo sesión válida
+            if (usuarioActual) {
+                if (listaUsuariosCloud[usuarioActual]) {
+                    actualizarPermisosUI();
+                } else {
+                    cerrarSesion(); // Si el admin lo borró, cierra sesión
+                }
+            }
+        });
+
         function actualizarPermisosUI() {
             const btnVerColab = document.getElementById('btnVerColaboradores');
             const secCrearUser = document.getElementById('sectionCrearUsuario');
 
-            // Solo el usuario 'Admin' ve los botones de gestión de otros usuarios
             if (usuarioActual === 'Admin') {
                 btnVerColab.classList.remove('hidden');
                 secCrearUser.classList.remove('hidden');
@@ -355,10 +374,9 @@
             }
         }
 
-        if (usuarioActual && usuariosDB[usuarioActual]) {
+        if (usuarioActual) {
             loginModal.classList.add('hidden');
             document.getElementById('currentUserBadge').textContent = usuarioActual;
-            actualizarPermisosUI();
         } else {
             loginModal.classList.remove('hidden');
         }
@@ -368,7 +386,7 @@
             const user = document.getElementById('loginUser').value.trim();
             const pass = document.getElementById('loginPassword').value.trim();
 
-            if (usuariosDB[user] && usuariosDB[user] === pass) {
+            if (listaUsuariosCloud[user] && listaUsuariosCloud[user] === pass) {
                 usuarioActual = user;
                 localStorage.setItem('usuarioActual', usuarioActual);
                 loginModal.classList.add('hidden');
@@ -386,41 +404,50 @@
             localStorage.removeItem('usuarioActual');
             usuarioActual = null;
             loginModal.classList.remove('hidden');
+            document.getElementById('currentUserBadge').textContent = "Invitado";
             mostrarToast('Has salido del sistema');
         };
 
-        // Crear Nuevos Usuarios (Solo Admin)
-        document.getElementById('crearUsuarioForm').addEventListener('submit', (e) => {
+        // Crear Nuevos Usuarios en Firestore
+        document.getElementById('crearUsuarioForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (usuarioActual !== 'Admin') {
-                mostrarToast('Acceso denegado: Solo Admin puede crear usuarios', 'error');
+                mostrarToast('Acceso denegado', 'error');
                 return;
             }
 
             const nuevoUser = document.getElementById('nuevoUser').value.trim();
             const nuevoPass = document.getElementById('nuevoPass').value.trim();
 
-            if (usuariosDB[nuevoUser]) {
-                mostrarToast('El usuario ya existe', 'error');
+            if (listaUsuariosCloud[nuevoUser]) {
+                mostrarToast('El usuario ya existe en la nube', 'error');
                 return;
             }
 
-            usuariosDB[nuevoUser] = nuevoPass;
-            localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
-            mostrarToast(`¡Usuario ${nuevoUser} creado con éxito!`);
-            document.getElementById('crearUsuarioForm').reset();
+            try {
+                await setDoc(doc(db, "usuarios", nuevoUser), { password: nuevoPass });
+                mostrarToast(`¡Usuario ${nuevoUser} creado en la nube!`);
+                document.getElementById('crearUsuarioForm').reset();
+            } catch (error) {
+                console.error("Error al crear usuario:", error);
+                mostrarToast('Error al conectar con la nube', 'error');
+            }
         });
 
-        // Cambiar Contraseña Propia
-        document.getElementById('cambiarPassForm').addEventListener('submit', (e) => {
+        // Cambiar Contraseña Propia en Firestore
+        document.getElementById('cambiarPassForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const nuevaPass = document.getElementById('passActualizar').value.trim();
 
-            if (usuarioActual && usuariosDB[usuarioActual]) {
-                usuariosDB[usuarioActual] = nuevaPass;
-                localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
-                mostrarToast('¡Contraseña actualizada con éxito!');
-                document.getElementById('cambiarPassForm').reset();
+            if (usuarioActual) {
+                try {
+                    await updateDoc(doc(db, "usuarios", usuarioActual), { password: nuevaPass });
+                    mostrarToast('¡Contraseña actualizada en la nube!');
+                    document.getElementById('cambiarPassForm').reset();
+                } catch (error) {
+                    console.error("Error al actualizar pass:", error);
+                    mostrarToast('No se pudo actualizar', 'error');
+                }
             }
         });
 
@@ -439,9 +466,9 @@
             const contenedor = document.getElementById('listaColaboradoresCuerpo');
             contenedor.innerHTML = '';
 
-            const usuariosKeys = Object.keys(usuariosDB);
+            const usuariosKeys = Object.keys(listaUsuariosCloud);
             if(usuariosKeys.length === 0) {
-                contenedor.innerHTML = `<p class="text-center text-slate-400 py-6 text-sm">No hay cuentas registradas.</p>`;
+                contenedor.innerHTML = `<p class="text-center text-slate-400 py-6 text-sm">Cargando cuentas...</p>`;
                 return;
             }
 
@@ -467,24 +494,30 @@
             });
         }
 
-        window.modificarPassColaborador = function(user) {
+        window.modificarPassColaborador = async function(user) {
             if (usuarioActual !== 'Admin') return;
             const nuevaClave = prompt(`Ingresa la nueva contraseña para el usuario "${user}":`);
             if (nuevaClave && nuevaClave.trim() !== '') {
-                usuariosDB[user] = nuevaClave.trim();
-                localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
-                mostrarToast(`Contraseña de ${user} actualizada`);
-                renderizarListaColaboradores();
+                try {
+                    await updateDoc(doc(db, "usuarios", user), { password: nuevaClave.trim() });
+                    mostrarToast(`Contraseña de ${user} actualizada en la nube`);
+                    renderizarListaColaboradores();
+                } catch (err) {
+                    mostrarToast('Error al actualizar', 'error');
+                }
             }
         }
 
-        window.eliminarColaborador = function(user) {
+        window.eliminarColaborador = async function(user) {
             if (usuarioActual !== 'Admin') return;
-            if(confirm(`¿Estás seguro de eliminar al usuario "${user}"?`)) {
-                delete usuariosDB[user];
-                localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
-                mostrarToast(`Usuario ${user} eliminado`);
-                renderizarListaColaboradores();
+            if(confirm(`¿Estás seguro de eliminar al usuario "${user}" de la nube?`)) {
+                try {
+                    await deleteDoc(doc(db, "usuarios", user));
+                    mostrarToast(`Usuario ${user} eliminado`);
+                    renderizarListaColaboradores();
+                } catch (err) {
+                    mostrarToast('Error al eliminar', 'error');
+                }
             }
         }
 
