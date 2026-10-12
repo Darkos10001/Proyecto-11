@@ -32,9 +32,9 @@
                     --:--:--
                 </div>
                 <!-- Indicador de Estado de Conexión -->
-                <div id="connectionStatus" class="flex items-center gap-2 bg-rose-500/20 text-rose-300 border border-rose-500/30 px-3 py-1 rounded-full text-xs font-medium">
-                    <span class="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
-                    <span id="statusText">Sin Conexión</span>
+                <div id="connectionStatus" class="flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="statusText">Conectado en Vivo</span>
                 </div>
             </div>
         </div>
@@ -204,12 +204,11 @@
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- SCRIPTS DE FIREBASE (Versión SDK Web Modular compatible con CDN) -->
+    <!-- SCRIPTS DE FIREBASE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Tus credenciales oficiales de Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
             authDomain: "proyecto-11-1950e.firebaseapp.com",
@@ -221,11 +220,9 @@
             measurementId: "G-P19J0Q4ZR8"
         };
 
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Actualizar reloj y campos de fecha/hora en vivo
         function actualizarTiempo() {
             const ahora = new Date();
             const opcionesFecha = { year: 'numeric', month: '2-digit', day: '2-digit' };
@@ -238,7 +235,6 @@
         setInterval(actualizarTiempo, 1000);
         actualizarTiempo();
 
-        // Mostrar notificación tipo Toast
         window.mostrarToast = function(mensaje, tipo = 'success') {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toastMsg');
@@ -257,51 +253,41 @@
             }, 3000);
         }
 
-        // Cambiar indicador de estado a Conectado
-        const statusText = document.getElementById('statusText');
-        const connectionStatus = document.getElementById('connectionStatus');
-        statusText.textContent = "Conectado en Vivo";
-        connectionStatus.className = "flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-medium";
-        connectionStatus.querySelector('span').className = "w-2 h-2 rounded-full bg-emerald-400";
-
-        // Referencia a la colección en Firestore
         const coleccionRef = collection(db, "registros");
 
-        // Guardar Datos en Firestore
+        // Guardado con UI Instantánea (Optimistic UI)
         const form = document.getElementById('registroForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btnGuardar');
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando...`;
+
+            // Capturar datos del formulario al instante
+            const nuevoDato = {
+                nombre: document.getElementById('nombre').value.trim(),
+                calle: document.getElementById('calle').value.trim(),
+                cruzamientos: document.getElementById('cruzamientos').value.trim(),
+                numero: document.getElementById('numero').value.trim(),
+                seccion: document.getElementById('seccion').value.trim(),
+                telefono: document.getElementById('telefono').value.trim(),
+                facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
+                fecha: document.getElementById('fechaRegistro').value,
+                hora: document.getElementById('horaRegistro').value,
+                timestamp: serverTimestamp()
+            };
+
+            // Limpiar formulario y notificar de inmediato (sin esperas visuales)
+            form.reset();
+            actualizarTiempo();
+            mostrarToast('¡Registro guardado con éxito!');
 
             try {
-                await addDoc(coleccionRef, {
-                    nombre: document.getElementById('nombre').value.trim(),
-                    calle: document.getElementById('calle').value.trim(),
-                    cruzamientos: document.getElementById('cruzamientos').value.trim(),
-                    numero: document.getElementById('numero').value.trim(),
-                    seccion: document.getElementById('seccion').value.trim(),
-                    telefono: document.getElementById('telefono').value.trim(),
-                    facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
-                    fecha: document.getElementById('fechaRegistro').value,
-                    hora: document.getElementById('horaRegistro').value,
-                    timestamp: serverTimestamp()
-                });
-
-                form.reset();
-                actualizarTiempo();
-                mostrarToast('¡Registro guardado correctamente en la nube!');
+                // Enviar a la nube en segundo plano
+                await addDoc(coleccionRef, nuevoDato);
             } catch (error) {
-                console.error("Error al guardar: ", error);
-                mostrarToast('Error al guardar el registro', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en la Nube`;
+                console.error("Error al sincronizar con la nube: ", error);
+                mostrarToast('Aviso: El registro tardó en sincronizarse en la nube', 'error');
             }
         });
 
-        // Escuchar datos en tiempo real (Real-time listener)
         let listaGlobalRegistros = [];
         onSnapshot(coleccionRef, (snapshot) => {
             const tbody = document.getElementById('tablaCuerpo');
@@ -356,7 +342,6 @@
             document.getElementById('totalRegistros').textContent = `Total de registros: ${datos.length}`;
         }
 
-        // Función global para eliminar registro
         window.eliminarRegistro = async function(id) {
             if(confirm('¿Estás seguro de que deseas eliminar este registro permanentemente de la base de datos?')) {
                 try {
@@ -369,7 +354,6 @@
             }
         }
 
-        // Función de búsqueda en vivo en la tabla
         window.filtrarRegistros = function() {
             const texto = document.getElementById('buscador').value.toLowerCase();
             const filtrados = listaGlobalRegistros.filter(item => 
@@ -381,7 +365,6 @@
             renderizarTabla(filtrados);
         }
 
-        // Exportar a Excel (.xlsx) profesional
         window.exportarExcel = function() {
             if(listaGlobalRegistros.length === 0) {
                 mostrarToast('No hay datos para exportar', 'error');
@@ -407,7 +390,6 @@
             mostrarToast('Archivo Excel descargado con éxito');
         }
 
-        // Exportar formato compatible con Access / CSV
         window.exportarAccessCSV = function() {
             if(listaGlobalRegistros.length === 0) {
                 mostrarToast('No hay datos para exportar', 'error');
