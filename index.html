@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Avanzada de Registros</title>
+    <title>Gestión Avanzada de Registros - Acceso y Usuarios</title>
     <!-- Tailwind CSS para diseño moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome para iconos -->
@@ -12,6 +12,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen flex flex-col justify-between font-sans text-slate-800">
+
+    <!-- MODAL DE INICIO DE SESIÓN -->
+    <div id="loginModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 border border-slate-200">
+            <div class="text-center mb-6">
+                <div class="bg-indigo-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-900">Iniciar Sesión</h2>
+                <p class="text-xs text-slate-500 mt-1">Ingresa tus credenciales para acceder al sistema</p>
+            </div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Usuario / Correo</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="loginUser" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="Ej. Admin o correo@dominio.com">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Contraseña</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-key"></i></span>
+                        <input type="password" id="loginPassword" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" placeholder="••••••••">
+                    </div>
+                </div>
+
+                <div id="loginError" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 p-2.5 rounded-lg border border-rose-200 text-center">
+                    Usuario o contraseña incorrectos
+                </div>
+
+                <button type="submit" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Entrar al Sistema
+                </button>
+            </form>
+        </div>
+    </div>
 
     <!-- HEADER / NAVEGACIÓN -->
     <header class="bg-indigo-700 text-white shadow-md">
@@ -22,7 +61,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight">Gestión Avanzada de Registros</h1>
-                    <p class="text-xs text-indigo-200">Base de datos en tiempo real & Sincronización Excel</p>
+                    <p class="text-xs text-indigo-200">Base de datos en tiempo real & Control de Usuarios</p>
                 </div>
             </div>
             
@@ -31,11 +70,10 @@
                 <div id="liveClock" class="bg-slate-900/60 px-3 py-1.5 rounded-lg text-sm font-mono tracking-wider border border-indigo-500/30">
                     --:--:--
                 </div>
-                <!-- Indicador de Estado de Conexión -->
-                <div id="connectionStatus" class="flex items-center gap-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-medium">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span id="statusText">Conectado en Vivo</span>
-                </div>
+                <!-- Botón Cerrar Sesión -->
+                <button onclick="cerrarSesion()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-power-off"></i> Salir
+                </button>
             </div>
         </div>
     </header>
@@ -43,14 +81,14 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
         
-        <!-- FORMULARIO DE REGISTRO (Columna Izquierda) -->
+        <!-- FORMULARIO DE REGISTRO Y GESTIÓN DE USUARIOS (Columna Izquierda) -->
         <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
             <div>
                 <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
                     <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
                         <i class="fa-solid fa-user-plus text-indigo-600"></i> Nuevo Registro
                     </h2>
-                    <span class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded-full">En vivo</span>
+                    <span id="currentUserBadge" class="text-xs bg-indigo-50 text-indigo-700 font-semibold px-2.5 py-1 rounded-full">Admin</span>
                 </div>
 
                 <form id="registroForm" class="space-y-4">
@@ -135,6 +173,28 @@
                     </button>
                 </form>
             </div>
+
+            <!-- Panel para Crear Nuevos Usuarios -->
+            <div class="mt-6 pt-4 border-t border-slate-100">
+                <details class="group">
+                    <summary class="text-xs font-bold text-indigo-600 cursor-pointer flex items-center gap-1.5 list-none">
+                        <i class="fa-solid fa-user-gear"></i> Registrar nuevo usuario colaborador <i class="fa-solid fa-chevron-down text-[10px] transition group-open:rotate-180"></i>
+                    </summary>
+                    <form id="crearUsuarioForm" class="mt-3 space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Nombre de Usuario</label>
+                            <input type="text" id="nuevoUser" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ej. colaborador2">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-slate-600 uppercase mb-1">Contraseña</label>
+                            <input type="password" id="nuevoPass" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-user-plus"></i> Crear Cuenta
+                        </button>
+                    </form>
+                </details>
+            </div>
         </section>
 
         <!-- TABLA Y REGISTROS (Columna Derecha) -->
@@ -142,7 +202,6 @@
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
                 <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-database text-indigo-600"></i> Registros Almacenados
-                    <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">Sincronización instantánea</span>
                 </h2>
                 
                 <div class="flex items-center gap-2 w-full sm:w-auto">
@@ -172,7 +231,7 @@
                             <th class="p-3">Dirección y Ubicación</th>
                             <th class="p-3">Contacto / Redes</th>
                             <th class="p-3">Fecha y Hora</th>
-                            <th class="p-3 text-center">Estado Cloud</th>
+                            <th class="p-3 text-center">Cloud</th>
                             <th class="p-3 text-center">Acción</th>
                         </tr>
                     </thead>
@@ -180,7 +239,7 @@
                         <tr>
                             <td colspan="6" class="text-center py-10 text-slate-400">
                                 <i class="fa-solid fa-spinner fa-spin text-2xl text-indigo-500 mb-2"></i>
-                                <p>Estableciendo conexión en tiempo real...</p>
+                                <p>Cargando datos...</p>
                             </td>
                         </tr>
                     </tbody>
@@ -189,14 +248,14 @@
 
             <div class="mt-4 flex justify-between items-center text-xs text-slate-500">
                 <span id="totalRegistros">Total de registros: 0</span>
-                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Firestore Conectado en Vivo</span>
+                <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Conectado en Vivo</span>
             </div>
         </section>
     </main>
 
     <!-- FOOTER -->
     <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-        Plataforma de Datos en Vivo • Sincronización Cloud Automática
+        Plataforma de Datos en Vivo • Gestión de Usuarios Integrada
     </footer>
 
     <!-- Notificación Toast -->
@@ -205,7 +264,7 @@
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- SCRIPTS DE FIREBASE CON CACHÉ LOCAL (OPTIMIZED) -->
+    <!-- SCRIPTS DE FIREBASE Y GESTIÓN DE USUARIOS LOCALES -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -222,10 +281,69 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        
-        // Habilitar la caché local avanzada para respuesta instantánea y persistencia
         const db = initializeFirestore(app, {
             localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+
+        // GESTIÓN DE USUARIOS (Almacenados en el navegador del dispositivo)
+        let usuariosDB = JSON.parse(localStorage.getItem('usuariosApp')) || {
+            "Admin": "admin1234"
+        };
+
+        let usuarioActual = localStorage.getItem('usuarioActual') || null;
+
+        const loginModal = document.getElementById('loginModal');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+
+        // Verificar si ya hay sesión activa
+        if (usuarioActual && usuariosDB[usuarioActual]) {
+            loginModal.classList.add('hidden');
+            document.getElementById('currentUserBadge').textContent = usuarioActual;
+        } else {
+            loginModal.classList.remove('hidden');
+        }
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPassword').value.trim();
+
+            if (usuariosDB[user] && usuariosDB[user] === pass) {
+                usuarioActual = user;
+                localStorage.setItem('usuarioActual', usuarioActual);
+                loginModal.classList.add('hidden');
+                loginError.classList.add('hidden');
+                loginForm.reset();
+                document.getElementById('currentUserBadge').textContent = usuarioActual;
+                mostrarToast(`¡Bienvenido, ${usuarioActual}!`);
+            } else {
+                loginError.classList.remove('hidden');
+            }
+        });
+
+        window.cerrarSesion = function() {
+            localStorage.removeItem('usuarioActual');
+            usuarioActual = null;
+            loginModal.classList.remove('hidden');
+            mostrarToast('Has salido del sistema');
+        };
+
+        // Crear Nuevos Usuarios
+        document.getElementById('crearUsuarioForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const nuevoUser = document.getElementById('nuevoUser').value.trim();
+            const nuevoPass = document.getElementById('nuevoPass').value.trim();
+
+            if (usuariosDB[nuevoUser]) {
+                mostrarToast('El usuario ya existe', 'error');
+                return;
+            }
+
+            usuariosDB[nuevoUser] = nuevoPass;
+            localStorage.setItem('usuariosApp', JSON.stringify(usuariosDB));
+            mostrarToast(`¡Usuario ${nuevoUser} creado con éxito!`);
+            document.getElementById('crearUsuarioForm').reset();
         });
 
         function actualizarTiempo() {
@@ -260,7 +378,7 @@
 
         const coleccionRef = collection(db, "registros");
 
-        // Guardado con UI Instantánea respaldada por Caché Local (Optimistic UI + Offline Persistence)
+        // Guardar Datos
         const form = document.getElementById('registroForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -275,16 +393,15 @@
                 facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
                 fecha: document.getElementById('fechaRegistro').value,
                 hora: document.getElementById('horaRegistro').value,
+                registradoPor: usuarioActual || 'Admin',
                 timestamp: serverTimestamp()
             };
 
-            // Limpiar formulario y notificar de inmediato sin esperas de red
             form.reset();
             actualizarTiempo();
             mostrarToast('¡Registro guardado con éxito!');
 
             try {
-                // Sincronizar con Firestore en segundo plano (respaldado por caché local)
                 await addDoc(coleccionRef, nuevoDato);
             } catch (error) {
                 console.error("Error al sincronizar: ", error);
@@ -320,7 +437,10 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
                 tr.innerHTML = `
-                    <td class="p-3 font-semibold text-slate-800">${item.nombre}</td>
+                    <td class="p-3 font-semibold text-slate-800">
+                        ${item.nombre}
+                        <div class="text-[10px] text-slate-400 font-normal">Por: ${item.registradoPor || 'Admin'}</div>
+                    </td>
                     <td class="p-3 text-slate-600 text-xs">
                         <span class="font-medium text-slate-700">Calle:</span> ${item.calle} #${item.numero}<br>
                         <span class="font-medium text-slate-700">Cruzamientos:</span> ${item.cruzamientos}<br>
@@ -388,6 +508,7 @@
                 "Sección": item.seccion,
                 "Teléfono": item.telefono,
                 "Facebook": item.facebook,
+                "Registrado Por": item.registradoPor || 'Admin',
                 "Fecha de Registro": item.fecha,
                 "Hora de Registro": item.hora
             }));
@@ -404,7 +525,7 @@
                 mostrarToast('No hay datos para exportar', 'error');
                 return;
             }
-            let csvContent = "data:text/csv;charset=utf-8,ID,Nombre,Calle,Cruzamientos,Numero,Seccion,Telefono,Facebook,Fecha,Hora\r\n";
+            let csvContent = "data:text/csv;charset=utf-8,ID,Nombre,Calle,Cruzamientos,Numero,Seccion,Telefono,Facebook,RegistradoPor,Fecha,Hora\r\n";
             listaGlobalRegistros.forEach((item, index) => {
                 let row = [
                     index + 1,
@@ -415,6 +536,7 @@
                     `"${item.seccion}"`,
                     `"${item.telefono}"`,
                     `"${item.facebook}"`,
+                    `"${item.registradoPor || 'Admin'}"`,
                     `"${item.fecha}"`,
                     `"${item.hora}"`
                 ].join(",");
