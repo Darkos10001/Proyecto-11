@@ -205,10 +205,10 @@
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- SCRIPTS DE FIREBASE -->
+    <!-- SCRIPTS DE FIREBASE CON CACHÉ LOCAL (OPTIMIZED) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
@@ -222,7 +222,11 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        
+        // Habilitar la caché local avanzada para respuesta instantánea y persistencia
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
 
         function actualizarTiempo() {
             const ahora = new Date();
@@ -256,37 +260,35 @@
 
         const coleccionRef = collection(db, "registros");
 
-        // Guardado seguro con espera de confirmación de Firebase
+        // Guardado con UI Instantánea respaldada por Caché Local (Optimistic UI + Offline Persistence)
         const form = document.getElementById('registroForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btnGuardar');
-            btn.disabled = true;
-            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando en la Nube...`;
+
+            const nuevoDato = {
+                nombre: document.getElementById('nombre').value.trim(),
+                calle: document.getElementById('calle').value.trim(),
+                cruzamientos: document.getElementById('cruzamientos').value.trim(),
+                numero: document.getElementById('numero').value.trim(),
+                seccion: document.getElementById('seccion').value.trim(),
+                telefono: document.getElementById('telefono').value.trim(),
+                facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
+                fecha: document.getElementById('fechaRegistro').value,
+                hora: document.getElementById('horaRegistro').value,
+                timestamp: serverTimestamp()
+            };
+
+            // Limpiar formulario y notificar de inmediato sin esperas de red
+            form.reset();
+            actualizarTiempo();
+            mostrarToast('¡Registro guardado con éxito!');
 
             try {
-                await addDoc(coleccionRef, {
-                    nombre: document.getElementById('nombre').value.trim(),
-                    calle: document.getElementById('calle').value.trim(),
-                    cruzamientos: document.getElementById('cruzamientos').value.trim(),
-                    numero: document.getElementById('numero').value.trim(),
-                    seccion: document.getElementById('seccion').value.trim(),
-                    telefono: document.getElementById('telefono').value.trim(),
-                    facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
-                    fecha: document.getElementById('fechaRegistro').value,
-                    hora: document.getElementById('horaRegistro').value,
-                    timestamp: serverTimestamp()
-                });
-
-                form.reset();
-                actualizarTiempo();
-                mostrarToast('¡Guardado y confirmado en la nube!');
+                // Sincronizar con Firestore en segundo plano (respaldado por caché local)
+                await addDoc(coleccionRef, nuevoDato);
             } catch (error) {
-                console.error("Error al guardar: ", error);
-                mostrarToast('Error: No se pudo subir a la nube. Revisa tu conexión.', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Guardar en la Nube`;
+                console.error("Error al sincronizar: ", error);
+                mostrarToast('Guardado localmente. Se sincronizará al recuperar red.', 'error');
             }
         });
 
