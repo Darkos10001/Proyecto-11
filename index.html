@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activismo 2027</title>
-    <!-- Tailwind CSS para diseño moderno -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome para iconos -->
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS (XLSX) para exportación avanzada -->
+    <!-- SheetJS (XLSX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ZXing para lectura ultra rápida de códigos de barras / QR / PDF417 -->
-    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
-    <!-- Tesseract.js para OCR avanzado -->
+    <!-- ZXing para lectura de códigos de barras / QR / PDF417 -->
+    <script type="text/javascript" src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+    <!-- Tesseract.js para OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
@@ -57,49 +57,38 @@
         </div>
     </div>
 
-    <!-- MODAL ESCÁNER INTELIGENTE MULTI-MOTOR (CÁMARA / SUBIDA) -->
-    <div id="modalEscanerMultiview" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <!-- MODAL DE LECTURA DE CÁMARA EN TIEMPO REAL -->
+    <div id="modalCamaraEnVivo" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
             <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-camera-rotate text-red-600"></i> Escáner Inteligente INE (3 Vías)
+                    <i class="fa-solid fa-video text-red-600"></i> Cámara en Vivo
                 </h3>
-                <button onclick="cerrarEscanerMultiview()" class="text-slate-400 hover:text-slate-600 text-base">
+                <button onclick="cerrarCamaraEnVivo()" class="text-slate-400 hover:text-slate-600 text-base">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 text-center mb-3">Alinea la credencial. El sistema detectará automáticamente el código o extraerá los datos.</p>
+            <p class="text-xs text-slate-500 text-center mb-3">Sostén la credencial de forma firme para que enfoque el texto o código.</p>
             
-            <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-slate-900">
-                <video id="videoMultiview" class="w-full h-60 object-cover" autoplay playsinline muted></video>
-                <div class="absolute inset-0 border-2 border-dashed border-white/60 pointer-events-none m-4 rounded-lg flex items-center justify-center">
-                    <span id="scanStatusIndicator" class="bg-black/70 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full animate-pulse">Buscando enfoque y código...</span>
-                </div>
-            </div>
-            <canvas id="canvasMultiview" class="hidden"></canvas>
-            
-            <div id="statusProcesamiento" class="hidden w-full mt-3 text-xs text-center font-bold text-red-700 bg-red-50 p-2.5 rounded-xl border border-red-200">
-                <i class="fa-solid fa-spinner fa-spin mr-1"></i> Procesando datos de la credencial...
+            <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-black h-60 flex items-center justify-center">
+                <video id="videoEnVivo" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                <div class="absolute inset-0 border-2 border-dashed border-white/50 m-4 rounded-lg pointer-events-none"></div>
             </div>
 
-            <div class="w-full grid grid-cols-2 gap-2 mt-4">
-                <button onclick="dispararCapturaManual()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-camera"></i> Capturar Forzado
+            <div class="w-full mt-4 flex gap-2">
+                <button onclick="capturarFotogramaVivo()" class="w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-camera"></i> Escanear Fotograma Actual
                 </button>
-                <label class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition text-center cursor-pointer flex items-center justify-center gap-1.5">
-                    <i class="fa-solid fa-upload"></i> Subir Imagen INE
-                    <input type="file" accept="image/*" class="hidden" onchange="subirImagenDirecta(event)">
-                </label>
             </div>
 
-            <button onclick="cerrarEscanerMultiview()" class="mt-3 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
+            <button onclick="cerrarCamaraEnVivo()" class="mt-3 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
                 Cancelar
             </button>
         </div>
     </div>
 
-    <!-- MODAL DE GESTIÓN DE COLABORADORES (Solo Admin) -->
+    <!-- MODAL DE GESTIÓN DE COLABORADORES -->
     <div id="modalColaboradores" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center pb-4 mb-4 border-b border-slate-100">
@@ -130,7 +119,7 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Plataforma con Escáner Inteligente Multi-Vía</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma de Control y Escáner Nativo de INE</p>
                 </div>
             </div>
             
@@ -151,7 +140,7 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
         
-        <!-- FORMULARIO DE REGISTRO Y CONFIGURACIÓN (Columna Izquierda) -->
+        <!-- FORMULARIO DE REGISTRO (Columna Izquierda) -->
         <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
             <div>
                 <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
@@ -161,11 +150,32 @@
                     <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Admin</span>
                 </div>
 
-                <!-- BOTÓN ESCÁNER INTELIGENTE MULTI-VÍA -->
-                <div class="mb-4">
-                    <button type="button" onclick="abrirEscanerMultiview()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-camera-rotate text-red-400"></i> Escanear INE Automático (Cámara / Subida)
-                    </button>
+                <!-- BOTONES DE ESCANEO: CÁMARA NATIVA Y ARCHIVO -->
+                <div class="mb-4 space-y-2">
+                    <!-- Opción 1: Usa la app de cámara oficial del celular (Garantiza Enfoque Automático y Macro) -->
+                    <label class="w-full bg-slate-900 hover:bg-slate-800 active:bg-black text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-camera text-red-400 text-sm"></i>
+                        <span>Tomar Foto INE (Cámara Nativa / Enfoque IA)</span>
+                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="procesarArchivoEntrada(event)">
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Opción 2: Subir foto ya guardada de la galería -->
+                        <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-image text-slate-500"></i> Subir Galería
+                            <input type="file" accept="image/*" class="hidden" onchange="procesarArchivoEntrada(event)">
+                        </label>
+
+                        <!-- Opción 3: Probar cámara web integrada en el navegador -->
+                        <button type="button" onclick="abrirCamaraEnVivo()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-video text-slate-500"></i> Cámara Web
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mensaje de estado al procesar -->
+                <div id="indicadorProceso" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 text-center animate-pulse">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Leyendo datos de la credencial...
                 </div>
 
                 <form id="registroForm" class="space-y-4">
@@ -316,7 +326,7 @@
                 
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <button onclick="exportarExcelConEstilosProfesionales()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center gap-2 whitespace-nowrap">
-                        <i class="fa-solid fa-file-excel text-sm"></i> Exportar Excel Profesional
+                        <i class="fa-solid fa-file-excel text-sm"></i> Exportar Excel
                     </button>
                     <button onclick="exportarAccessCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
                         <i class="fa-solid fa-file-csv"></i> Access
@@ -390,7 +400,7 @@
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- SCRIPTS -->
+    <!-- SCRIPTS MÓDULO FIREBASE Y PROCESAMIENTO -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -414,9 +424,7 @@
         let usuarioActual = localStorage.getItem('usuarioActual') || null;
         let listaUsuariosCloud = {};
         let categoriaSeleccionada = 'Todos';
-        let mediaStreamMultiview = null;
-        let codeReader = new ZXing.BrowserMultiFormatReader();
-        let intervaloEscaneo = null;
+        let mediaStreamVivo = null;
 
         window.togglePassword = function(idInput, idIcon) {
             const input = document.getElementById(idInput);
@@ -430,172 +438,99 @@
             }
         };
 
-        // ==========================================
-        // ESCÁNER INTELIGENTE MULTI-VÍA (CÁMARA Y ARCHIVOS)
-        // ==========================================
-        window.abrirEscanerMultiview = async function() {
-            document.getElementById('modalEscanerMultiview').classList.remove('hidden');
-            const video = document.getElementById('videoMultiview');
+        // =========================================================
+        // MOTOR PRINCIPAL DE LECTURA DE IMAGEN (NATIVO / SUBIDO)
+        // =========================================================
+        window.procesarArchivoEntrada = function(event) {
+            const archivo = event.target.files[0];
+            if (!archivo) return;
+
+            const lector = new FileReader();
+            lector.onload = function(e) {
+                analizarImagenCompleta(e.target.result);
+            };
+            lector.readAsDataURL(archivo);
+            event.target.value = ''; // Resetear input
+        };
+
+        async function analizarImagenCompleta(dataUrl) {
+            const indicador = document.getElementById('indicadorProceso');
+            indicador.classList.remove('hidden');
 
             try {
-                // Seleccionar la mejor cámara trasera disponible con enfoque macro
-                const constraints = {
-                    video: {
-                        facingMode: { exact: "environment" },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
-                };
-
-                try {
-                    mediaStreamMultiview = await navigator.mediaDevices.getUserMedia(constraints);
-                } catch (e) {
-                    // Fallback a cualquier cámara si "environment" exacto falla
-                    mediaStreamMultiview = await navigator.mediaDevices.getUserMedia({ video: true });
-                }
-
-                video.srcObject = mediaStreamMultiview;
-                
-                // Intentar forzar enfoque continuo
-                const track = mediaStreamMultiview.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
-                    await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
-                }
-
-                // Iniciar escaneo automático en tiempo real por fotogramas
-                iniciarAnalisisContinuo();
-
-            } catch (err) {
-                console.error("Error al iniciar cámara:", err);
-                mostrarToast("No se pudo acceder a la cámara trasera", "error");
-            }
-        };
-
-        window.cerrarEscanerMultiview = function() {
-            document.getElementById('modalEscanerMultiview').classList.add('hidden');
-            document.getElementById('statusProcesamiento').classList.add('hidden');
-            if (intervaloEscaneo) clearInterval(intervaloEscaneo);
-            if (mediaStreamMultiview) {
-                mediaStreamMultiview.getTracks().forEach(track => track.stop());
-                mediaStreamMultiview = null;
-            }
-        };
-
-        function iniciarAnalisisContinuo() {
-            const video = document.getElementById('videoMultiview');
-            const canvas = document.getElementById('canvasMultiview');
-            const context = canvas.getContext('2d');
-
-            intervaloEscaneo = setInterval(async () => {
-                if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    // 1. Intentar leer Código de Barras o QR primero (más rápido)
-                    try {
-                        const imgDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-                        const result = await codeReader.decodeFromImageUrl(imgDataUrl);
-                        if (result && result.text) {
-                            procesarTextoDetectado(result.text);
-                            cerrarEscanerMultiview();
-                            return;
-                        }
-                    } catch (err) {
-                        // Si no hay código de barras visible en este fotograma exacto, continúa buscando
-                    }
-                }
-            }, 800); // Revisa cada 0.8 segundos
-        }
-
-        window.dispararCapturaManual = function() {
-            const video = document.getElementById('videoMultiview');
-            const canvas = document.getElementById('canvasMultiview');
-            const context = canvas.getContext('2d');
-
-            canvas.width = video.videoWidth || 1280;
-            canvas.height = video.videoHeight || 720;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            ejecutarOCRInmediato(imageDataUrl);
-        };
-
-        window.subirImagenDirecta = function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Pre-procesar imagen con canvas para mejorar contraste antes del OCR
-                    preprocesarYAnalizarImagen(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
-        function preprocesarYAnalizarImagen(src) {
-            const img = new Image();
-            img.onload = function() {
+                // Preprocesar imagen en Canvas para alta definición
+                const img = await cargarImagenAsync(dataUrl);
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
                 
-                // Dibujar y aplicar escala de grises y contraste para facilitar lectura a Tesseract
-                ctx.drawImage(img, 0, 0);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-                for (let i = 0; i < data.length; i += 4) {
-                    let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    // Aumentar contraste
-                    let contrast = 1.5;
-                    let val = यामुळे = (avg - 128) * contrast + 128;
-                    data[i] = data[i+1] = data[i+2] = val < 0 ? 0 : (val > 255 ? 255 : val);
+                // Escalar a una resolución óptima para lectura (1600px ancho)
+                const escala = 1600 / img.width;
+                canvas.width = 1600;
+                canvas.height = img.height * escala;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const imagenOptimizada = canvas.toDataURL('image/jpeg', 0.95);
+
+                // VIA 1: Intentar leer Código PDF417 / QR con ZXing
+                let exitoCodigo = false;
+                try {
+                    const codeReader = new ZXing.BrowserMultiFormatReader();
+                    const resultadoCode = await codeReader.decodeFromImageUrl(imagenOptimizada);
+                    if (resultadoCode && resultadoCode.text) {
+                        extraerYLlenarCampos(resultadoCode.text);
+                        exitoCodigo = true;
+                    }
+                } catch (e) {
+                    console.log("No se detectó código de barras o QR. Continuando con OCR...");
                 }
-                ctx.putImageData(imageData, 0, 0);
-                ejecutarOCRInmediato(canvas.toDataURL('image/jpeg'));
-            };
-            img.src = src;
-        }
 
-        async function ejecutarOCRInmediato(imageSrc) {
-            const statusDiv = document.getElementById('statusProcesamiento');
-            statusDiv.classList.remove('hidden');
-            document.getElementById('scanStatusIndicator').textContent = "Analizando con OCR avanzado...";
+                // VIA 2: Si no fue código de barras, ejecutar OCR Tesseract.js
+                if (!exitoCodigo) {
+                    const worker = await Tesseract.createWorker('spa');
+                    const resultadoOCR = await worker.recognize(imagenOptimizada);
+                    await worker.terminate();
 
-            try {
-                const worker = await Tesseract.createWorker('spa');
-                const ret = await worker.recognize(imageSrc);
-                await worker.terminate();
-
-                procesarTextoDetectado(ret.data.text);
-                cerrarEscanerMultiview();
-            } catch (error) {
-                console.error("Error OCR:", error);
-                mostrarToast("No se pudo extraer texto de la imagen", "error");
-                statusDiv.classList.add('hidden');
+                    if (resultadoOCR && resultadoOCR.data && resultadoOCR.data.text) {
+                        extraerYLlenarCampos(resultadoOCR.data.text);
+                    } else {
+                        mostrarToast("No se pudo leer la información de la INE", "error");
+                    }
+                }
+            } catch (err) {
+                console.error("Error al procesar la imagen:", err);
+                mostrarToast("Error al procesar el archivo seleccionado", "error");
+            } finally {
+                indicador.classList.add('hidden');
             }
         }
 
-        function procesarTextoDetectado(texto) {
-            mostrarToast("¡Datos extraídos correctamente de la INE!");
+        function cargarImagenAsync(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+
+        function extraerYLlenarCampos(texto) {
+            mostrarToast("¡INE leída con éxito!");
             const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-            // Detección de Nombre
-            let nombreHallado = "";
+            // Detección de Nombre Completo
+            let nombre = "";
             let idxNombre = lineas.findIndex(l => l.toUpperCase().includes("NOMBRE"));
             if (idxNombre !== -1 && lineas[idxNombre + 1]) {
-                nombreHallado = `${lineas[idxNombre + 1]} ${lineas[idxNombre + 2] || ''}`.trim();
-            } else {
-                nombreHallado = lineas.slice(0, 2).join(" ");
+                nombre = `${lineas[idxNombre + 1]} ${lineas[idxNombre + 2] || ''}`.trim();
+            } else if (lineas.length > 0) {
+                nombre = lineas.slice(0, 2).join(" ");
             }
 
-            if (nombreHallado) {
-                document.getElementById('nombre').value = nombreHallado.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
+            if (nombre) {
+                document.getElementById('nombre').value = nombre.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
             }
 
-            // Detección de Fecha / Edad
+            // Detección de Fecha de Nacimiento / Edad
             const matchFecha = texto.match(/(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/);
             if (matchFecha) {
                 const anioNac = parseInt(matchFecha[3], 10);
@@ -614,6 +549,47 @@
             document.getElementById('calle').focus();
         }
 
+        // =========================================================
+        // CÁMARA WEB EN VIVO (OPCIÓN SECUNDARIA)
+        // =========================================================
+        window.abrirCamaraEnVivo = async function() {
+            document.getElementById('modalCamaraEnVivo').classList.remove('hidden');
+            const video = document.getElementById('videoEnVivo');
+
+            try {
+                mediaStreamVivo = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }
+                });
+                video.srcObject = mediaStreamVivo;
+            } catch (err) {
+                console.error("Error al abrir cámara en vivo:", err);
+                mostrarToast("No se pudo iniciar la cámara en vivo", "error");
+            }
+        };
+
+        window.cerrarCamaraEnVivo = function() {
+            document.getElementById('modalCamaraEnVivo').classList.add('hidden');
+            if (mediaStreamVivo) {
+                mediaStreamVivo.getTracks().forEach(track => track.stop());
+                mediaStreamVivo = null;
+            }
+        };
+
+        window.capturarFotogramaVivo = function() {
+            const video = document.getElementById('videoEnVivo');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            cerrarCamaraEnVivo();
+            analizarImagenCompleta(canvas.toDataURL('image/jpeg', 0.95));
+        };
+
+        // =========================================================
+        // AUTENTICACIÓN Y GESTIÓN DE FIREBASE
+        // =========================================================
         const usuariosRef = collection(db, "usuarios");
         onSnapshot(usuariosRef, async (snapshot) => {
             listaUsuariosCloud = {};
@@ -674,7 +650,7 @@
                 actualizarPermisosUI();
                 mostrarToast(`¡Bienvenido, ${usuarioActual}!`);
             } else {
-                loginError.classList.add('hidden');
+                loginError.classList.remove('hidden');
             }
         });
 
@@ -1033,25 +1009,15 @@
                 return a.edad - b.edad;
             });
 
-            const jovenesNombres = datosOrdenados.filter(d => d.categoria === 'Jóvenes').map(d => `${d.nombre} (${d.edad}a)`).join(', ');
-            const adultosNombres = datosOrdenados.filter(d => d.categoria === 'Adultos').map(d => `${d.nombre} (${d.edad}a)`).join(', ');
-            const mayoresNombres = datosOrdenados.filter(d => d.categoria === 'Adultos Mayores').map(d => `${d.nombre} (${d.edad}a)`).join(', ');
-
             let aoa = [
-                ["REPORTE OFICIAL - ACTIVISMO 2027", "", "", "", "", "", "", "", "", "RESUMEN EJECUTIVO POR CATEGORÍAS", ""],
-                ["Fecha de emisión:", new Date().toLocaleDateString(), "", "", "", "", "", "", "", "Categoría", "Ciudadanos Registrados / Detalle"],
-                ["Total Registrados:", datosOrdenados.length, "", "", "", "", "", "", "", "Jóvenes (18-29)", `${datosOrdenados.filter(d => d.categoria === 'Jóvenes').length} personas: ${jovenesNombres || 'Ninguno'}`],
-                ["", "", "", "", "", "", "", "", "", "Adultos (30-59)", `${datosOrdenados.filter(d => d.categoria === 'Adultos').length} personas: ${adultosNombres || 'Ninguno'}`],
-                ["", "", "", "", "", "", "", "", "", "Adultos Mayores (60+)", `${datosOrdenados.filter(d => d.categoria === 'Adultos Mayores').length} personas: ${mayoresNombres || 'Ninguno'}`],
-                ["", "", "", "", "", "", "", "", "", "", ""],
+                ["REPORTE OFICIAL - ACTIVISMO 2027", "", "", "", "", "", "", "", "", "", "", "", ""],
+                ["Fecha de emisión:", new Date().toLocaleDateString(), "", "", "", "", "", "", "", "", "", "", ""],
+                ["Total Registrados:", datosOrdenados.length, "", "", "", "", "", "", "", "", "", "", ""],
+                ["", "", "", "", "", "", "", "", "", "", "", "", ""],
                 ["No.", "Nombre Completo", "Edad", "Categoría", "Calle", "Cruzamientos", "Número", "Sección", "Teléfono", "Facebook", "Registrado Por", "Fecha", "Hora"]
             ];
 
             datosOrdenados.forEach((item, index) => {
-                if (index > 0 && index % 25 === 0) {
-                    aoa.push([`--- BLOQUE DE IMPRESIÓN CARTA (Página ${Math.floor(index/25) + 1}) ---`, "", "", "", "", "", "", "", "", "", "", "", ""]);
-                }
-
                 aoa.push([
                     index + 1,
                     item.nombre,
@@ -1070,7 +1036,6 @@
             });
 
             const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-
             worksheet['!cols'] = [
                 { wch: 6 }, { wch: 28 }, { wch: 8 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, 
                 { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 12 }
@@ -1078,8 +1043,8 @@
 
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Activismo 2027");
-            XLSX.writeFile(workbook, "Activismo_2027_Reporte_Oficial.xlsx");
-            mostrarToast('¡Reporte de Excel profesional descargado con éxito!');
+            XLSX.writeFile(workbook, "Activismo_2027_Reporte.xlsx");
+            mostrarToast('¡Reporte de Excel descargado con éxito!');
         }
 
         window.exportarAccessCSV = function() {
@@ -1114,7 +1079,7 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            mostrarToast('Archivo CSV compatible con Access descargado');
+            mostrarToast('Archivo CSV para Access descargado');
         }
     </script>
 </body>
