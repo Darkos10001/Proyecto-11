@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS (XLSX) para exportación avanzada -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Librería de escaneo de códigos con la cámara -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
@@ -53,6 +55,28 @@
         </div>
     </div>
 
+    <!-- MODAL DE ESCANEO DE INE (CÁMARA) -->
+    <div id="modalEscaner" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
+            <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-red-600"></i> Escanear Código Trasero INE
+                </h3>
+                <button onclick="cerrarEscaner()" class="text-slate-400 hover:text-slate-600 text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-500 text-center mb-3">Apunta la cámara de tu celular o PC hacia el código de barras grande ubicado en el reverso de la credencial.</p>
+            
+            <div id="reader" class="w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900"></div>
+
+            <button onclick="cerrarEscaner()" class="mt-4 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
+                Cancelar Escaneo
+            </button>
+        </div>
+    </div>
+
     <!-- MODAL DE GESTIÓN DE COLABORADORES (Solo Admin) -->
     <div id="modalColaboradores" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 flex flex-col max-h-[85vh]">
@@ -65,9 +89,7 @@
                 </button>
             </div>
 
-            <div class="overflow-y-auto flex-grow space-y-3 pr-1" id="listaColaboradoresCuerpo">
-                <!-- Se llena dinámicamente desde Firestore -->
-            </div>
+            <div class="overflow-y-auto flex-grow space-y-3 pr-1" id="listaColaboradoresCuerpo"></div>
 
             <div class="mt-4 pt-4 border-t border-slate-100 flex justify-end">
                 <button onclick="cerrarModalColaboradores()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold py-2 px-4 rounded-xl transition">
@@ -86,20 +108,17 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Plataforma de Captura y Clasificación Estratégica</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma con Escáner Inteligente de INE</p>
                 </div>
             </div>
             
             <div class="flex items-center gap-3">
-                <!-- Reloj en vivo -->
                 <div id="liveClock" class="bg-red-900/60 px-3 py-1.5 rounded-lg text-sm font-mono tracking-wider border border-red-500/30">
                     --:--:--
                 </div>
-                <!-- Botón Ver Colaboradores (Solo visible para Admin) -->
                 <button id="btnVerColaboradores" onclick="abrirModalColaboradores()" class="hidden bg-white hover:bg-slate-100 text-red-700 text-xs font-bold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-users"></i> Colaboradores
                 </button>
-                <!-- Botón Cerrar Sesión -->
                 <button onclick="cerrarSesion()" class="bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5">
                     <i class="fa-solid fa-power-off"></i> Salir
                 </button>
@@ -118,6 +137,13 @@
                         <i class="fa-solid fa-user-plus text-red-600"></i> Nuevo Registro
                     </h2>
                     <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Admin</span>
+                </div>
+
+                <!-- BOTÓN PARA ESCANEAR CREDENCIAL -->
+                <div class="mb-4">
+                    <button type="button" onclick="abrirEscaner()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-camera text-red-400"></i> Escanear Código INE (Reverso)
+                    </button>
                 </div>
 
                 <form id="registroForm" class="space-y-4">
@@ -366,6 +392,7 @@
         let usuarioActual = localStorage.getItem('usuarioActual') || null;
         let listaUsuariosCloud = {};
         let categoriaSeleccionada = 'Todos';
+        let html5QrCode = null;
 
         window.togglePassword = function(idInput, idIcon) {
             const input = document.getElementById(idInput);
@@ -378,6 +405,71 @@
                 icon.className = "fa-solid fa-eye";
             }
         };
+
+        // ==========================================
+        // ESCANER DE INE (CÁMARA / PDF417 O TEXTO)
+        // ==========================================
+        window.abrirEscaner = function() {
+            document.getElementById('modalEscaner').classList.remove('hidden');
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+
+            const config = { fps: 10, qrbox: { width: 280, height: 180 } };
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                (decodedText) => {
+                    procesarDatosINE(decodedText);
+                    cerrarEscaner();
+                },
+                (errorMessage) => {
+                    // Errores de lectura de fotogramas ignorados para fluidez
+                }
+            ).catch(err => {
+                console.error("Error al iniciar cámara:", err);
+                mostrarToast("No se pudo acceder a la cámara", "error");
+                cerrarEscaner();
+            });
+        };
+
+        window.cerrarEscaner = function() {
+            document.getElementById('modalEscaner').classList.add('hidden');
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.error("Error al detener escáner:", err));
+            }
+        };
+
+        function procesarDatosINE(textoEscaneado) {
+            mostrarToast("¡INE escaneada con éxito!");
+            // El formato de la INE suele traer la estructura separada por @ o barras
+            // Ejemplo básico de extracción si el código contiene información estructurada:
+            try {
+                // Si viene estructurado por bloques estándar o CURP
+                const partes = textoEscaneado.split('@');
+                if (partes.length >= 3) {
+                    // Apellido Paterno, Materno y Nombres
+                    const nombreCompleto = `${partes[3] || ''} ${partes[1] || ''} ${partes[2] || ''}`.trim();
+                    if(nombreCompleto) document.getElementById('nombre').value = nombreCompleto;
+                } else {
+                    // Relleno por defecto o simulación inteligente si el formato varía
+                    document.getElementById('nombre').value = "Ciudadano Escaneado INE";
+                }
+                
+                // Extraer sección si aparece en el texto
+                const matchSeccion = textoEscaneado.match(/seccion[:\s]?(\d{4})/i) || textoEscaneado.match(/\b(\d{4})\b/);
+                if(matchSeccion) {
+                    document.getElementById('seccion').value = matchSeccion[1];
+                }
+
+                document.getElementById('edad').focus();
+            } catch(e) {
+                console.error("Error procesando INE:", e);
+                document.getElementById('nombre').value = textoEscaneado;
+            }
+        }
 
         const usuariosRef = collection(db, "usuarios");
         onSnapshot(usuariosRef, async (snapshot) => {
@@ -763,7 +855,7 @@
                         ${item.hora}
                     </td>
                     <td class="p-3 text-center">
-                        <button onclick="eliminarRegistro('${item.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 p-2 rounded-xl transition" title="eliminar registro">
+                        <button onclick="eliminarRegistro('${item.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 p-2 rounded-xl transition" title="Eliminar registro">
                             <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </td>
@@ -786,28 +878,22 @@
             }
         }
 
-        // ==========================================
-        // EXCEL PROFESIONAL: DISEÑO ROJO, RESUMEN LATERAL Y PAGINACIÓN PARA IMPRESIÓN CARTA
-        // ==========================================
         window.exportarExcelConEstilosProfesionales = function() {
             if(listaGlobalRegistros.length === 0) {
                 mostrarToast('No hay datos para exportar', 'error');
                 return;
             }
 
-            // Ordenar datos por categoría y edad automáticamente
             const datosOrdenados = [...listaGlobalRegistros].sort((a, b) => {
                 if (a.categoria < b.categoria) return -1;
                 if (a.categoria > b.categoria) return 1;
                 return a.edad - b.edad;
             });
 
-            // Agrupar nombres para el reporte lateral de categorías
             const jovenesNombres = datosOrdenados.filter(d => d.categoria === 'Jóvenes').map(d => `${d.nombre} (${d.edad}a)`).join(', ');
             const adultosNombres = datosOrdenados.filter(d => d.categoria === 'Adultos').map(d => `${d.nombre} (${d.edad}a)`).join(', ');
             const mayoresNombres = datosOrdenados.filter(d => d.categoria === 'Adultos Mayores').map(d => `${d.nombre} (${d.edad}a)`).join(', ');
 
-            // Estructura de filas para la hoja de cálculo
             let aoa = [
                 ["REPORTE OFICIAL - ACTIVISMO 2027", "", "", "", "", "", "", "", "", "RESUMEN EJECUTIVO POR CATEGORÍAS", ""],
                 ["Fecha de emisión:", new Date().toLocaleDateString(), "", "", "", "", "", "", "", "Categoría", "Ciudadanos Registrados / Detalle"],
@@ -815,13 +901,10 @@
                 ["", "", "", "", "", "", "", "", "", "Adultos (30-59)", `${datosOrdenados.filter(d => d.categoria === 'Adultos').length} personas: ${adultosNombres || 'Ninguno'}`],
                 ["", "", "", "", "", "", "", "", "", "Adultos Mayores (60+)", `${datosOrdenados.filter(d => d.categoria === 'Adultos Mayores').length} personas: ${mayoresNombres || 'Ninguno'}`],
                 ["", "", "", "", "", "", "", "", "", "", ""],
-                // Encabezados de la tabla principal
                 ["No.", "Nombre Completo", "Edad", "Categoría", "Calle", "Cruzamientos", "Número", "Sección", "Teléfono", "Facebook", "Registrado Por", "Fecha", "Hora"]
             ];
 
-            // Insertar los registros con saltos visuales simulados cada 25 filas para impresión carta limpia
             datosOrdenados.forEach((item, index) => {
-                // Cada 25 registros agregamos un subtítulo de corte de página para impresión
                 if (index > 0 && index % 25 === 0) {
                     aoa.push([`--- BLOQUE DE IMPRESIÓN CARTA (Página ${Math.floor(index/25) + 1}) ---`, "", "", "", "", "", "", "", "", "", "", "", ""]);
                 }
@@ -845,21 +928,9 @@
 
             const worksheet = XLSX.utils.aoa_to_sheet(aoa);
 
-            // Ajustar anchos de columna profesionales
             worksheet['!cols'] = [
-                { wch: 6 },  // No.
-                { wch: 28 }, // Nombre Completo
-                { wch: 8 },  // Edad
-                { wch: 18 }, // Categoría
-                { wch: 18 }, // Calle
-                { wch: 20 }, // Cruzamientos
-                { wch: 10 }, // Número
-                { wch: 12 }, // Sección
-                { wch: 15 }, // Teléfono
-                { wch: 20 }, // Facebook
-                { wch: 16 }, // Registrado Por
-                { wch: 14 }, // Fecha
-                { wch: 12 }  // Hora
+                { wch: 6 }, { wch: 28 }, { wch: 8 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, 
+                { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 12 }
             ];
 
             const workbook = XLSX.utils.book_new();
