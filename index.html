@@ -10,8 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS (XLSX) para exportación avanzada -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Librería de escaneo de códigos con la cámara -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Tesseract.js para Reconocimiento Óptico de Caracteres (OCR INE) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
@@ -55,24 +55,41 @@
         </div>
     </div>
 
-    <!-- MODAL DE ESCANEO DE INE (CÁMARA) -->
-    <div id="modalEscaner" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <!-- MODAL ESCÁNER OCR INE CON CÁMARA / ARCHIVO -->
+    <div id="modalEscanerOCR" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
             <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-qrcode text-red-600"></i> Escanear Código Trasero INE
+                    <i class="fa-solid fa-id-card text-red-600"></i> Escanear INE con OCR
                 </h3>
-                <button onclick="cerrarEscaner()" class="text-slate-400 hover:text-slate-600 text-base">
+                <button onclick="cerrarEscanerOCR()" class="text-slate-400 hover:text-slate-600 text-base">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 text-center mb-3">Apunta la cámara de tu celular o PC hacia el código de barras grande ubicado en el reverso de la credencial.</p>
+            <p class="text-xs text-slate-500 text-center mb-4">Captura una foto clara del frente de la credencial INE o sube una imagen desde tu dispositivo.</p>
             
-            <div id="reader" class="w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-900"></div>
+            <div class="w-full space-y-3">
+                <video id="videoOCR" class="w-full h-48 bg-slate-900 rounded-xl object-cover border border-slate-300" autoplay playsinline></video>
+                <canvas id="canvasOCR" class="hidden"></canvas>
+                
+                <div id="statusOCR" class="hidden text-xs text-center font-bold text-red-700 bg-red-50 p-2.5 rounded-xl border border-red-200">
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Procesando texto de la INE...
+                </div>
 
-            <button onclick="cerrarEscaner()" class="mt-4 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
-                Cancelar Escaneo
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnCapturarOCR" onclick="capturarFotoOCR()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-camera"></i> Tomar Foto
+                    </button>
+                    <label class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-upload"></i> Subir Imagen
+                        <input type="file" accept="image/*" class="hidden" onchange="subirImagenOCR(event)">
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="cerrarEscanerOCR()" class="mt-4 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
+                Cancelar
             </button>
         </div>
     </div>
@@ -108,7 +125,7 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Plataforma con Escáner Inteligente de INE</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma con Escáner OCR Inteligente de INE</p>
                 </div>
             </div>
             
@@ -139,10 +156,10 @@
                     <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Admin</span>
                 </div>
 
-                <!-- BOTÓN PARA ESCANEAR CREDENCIAL -->
+                <!-- BOTÓN ESCÁNER OCR CÁMARA/FOTO -->
                 <div class="mb-4">
-                    <button type="button" onclick="abrirEscaner()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-camera text-red-400"></i> Escanear Código INE (Reverso)
+                    <button type="button" onclick="abrirEscanerOCR()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-id-card text-red-400"></i> Escanear INE (OCR Foto/Cámara)
                     </button>
                 </div>
 
@@ -392,7 +409,7 @@
         let usuarioActual = localStorage.getItem('usuarioActual') || null;
         let listaUsuariosCloud = {};
         let categoriaSeleccionada = 'Todos';
-        let html5QrCode = null;
+        let mediaStreamOCR = null;
 
         window.togglePassword = function(idInput, idIcon) {
             const input = document.getElementById(idInput);
@@ -407,68 +424,111 @@
         };
 
         // ==========================================
-        // ESCANER DE INE (CÁMARA / PDF417 O TEXTO)
+        // FUNCIONES OCR CÁMARA / IMAGEN (TESSERACT.JS)
         // ==========================================
-        window.abrirEscaner = function() {
-            document.getElementById('modalEscaner').classList.remove('hidden');
-            
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("reader");
-            }
+        window.abrirEscanerOCR = async function() {
+            document.getElementById('modalEscanerOCR').classList.remove('hidden');
+            const video = document.getElementById('videoOCR');
 
-            const config = { fps: 10, qrbox: { width: 280, height: 180 } };
-            
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                config, 
-                (decodedText) => {
-                    procesarDatosINE(decodedText);
-                    cerrarEscaner();
-                },
-                (errorMessage) => {
-                    // Errores de lectura de fotogramas ignorados para fluidez
-                }
-            ).catch(err => {
-                console.error("Error al iniciar cámara:", err);
-                mostrarToast("No se pudo acceder a la cámara", "error");
-                cerrarEscaner();
-            });
-        };
-
-        window.cerrarEscaner = function() {
-            document.getElementById('modalEscaner').classList.add('hidden');
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => console.error("Error al detener escáner:", err));
-            }
-        };
-
-        function procesarDatosINE(textoEscaneado) {
-            mostrarToast("¡INE escaneada con éxito!");
-            // El formato de la INE suele traer la estructura separada por @ o barras
-            // Ejemplo básico de extracción si el código contiene información estructurada:
             try {
-                // Si viene estructurado por bloques estándar o CURP
-                const partes = textoEscaneado.split('@');
-                if (partes.length >= 3) {
-                    // Apellido Paterno, Materno y Nombres
-                    const nombreCompleto = `${partes[3] || ''} ${partes[1] || ''} ${partes[2] || ''}`.trim();
-                    if(nombreCompleto) document.getElementById('nombre').value = nombreCompleto;
-                } else {
-                    // Relleno por defecto o simulación inteligente si el formato varía
-                    document.getElementById('nombre').value = "Ciudadano Escaneado INE";
-                }
-                
-                // Extraer sección si aparece en el texto
-                const matchSeccion = textoEscaneado.match(/seccion[:\s]?(\d{4})/i) || textoEscaneado.match(/\b(\d{4})\b/);
-                if(matchSeccion) {
-                    document.getElementById('seccion').value = matchSeccion[1];
-                }
-
-                document.getElementById('edad').focus();
-            } catch(e) {
-                console.error("Error procesando INE:", e);
-                document.getElementById('nombre').value = textoEscaneado;
+                mediaStreamOCR = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" }
+                });
+                video.srcObject = mediaStreamOCR;
+            } catch (err) {
+                console.error("Error al acceder a la cámara:", err);
+                mostrarToast("No se pudo iniciar la cámara", "error");
             }
+        };
+
+        window.cerrarEscanerOCR = function() {
+            document.getElementById('modalEscanerOCR').classList.add('hidden');
+            document.getElementById('statusOCR').classList.add('hidden');
+            if (mediaStreamOCR) {
+                mediaStreamOCR.getTracks().forEach(track => track.stop());
+                mediaStreamOCR = null;
+            }
+        };
+
+        window.capturarFotoOCR = function() {
+            const video = document.getElementById('videoOCR');
+            const canvas = document.getElementById('canvasOCR');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageDataUrl = canvas.toDataURL('image/png');
+            ejecutarOCR(imageDataUrl);
+        };
+
+        window.subirImagenOCR = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    ejecutarOCR(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        async function ejecutarOCR(imageSource) {
+            const statusDiv = document.getElementById('statusOCR');
+            statusDiv.classList.remove('hidden');
+
+            try {
+                const worker = await Tesseract.createWorker('spa');
+                const ret = await worker.recognize(imageSource);
+                await worker.terminate();
+
+                const textoExtraido = ret.data.text;
+                analizarTextoINE(textoExtraido);
+                cerrarEscanerOCR();
+            } catch (error) {
+                console.error("Error OCR:", error);
+                mostrarToast("Error al procesar la imagen de la INE", "error");
+                statusDiv.classList.add('hidden');
+            }
+        }
+
+        function analizarTextoINE(texto) {
+            const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+            // Buscar Nombres y Apellidos
+            let nombreHallado = "";
+            let idxNombre = lineas.findIndex(l => l.toUpperCase().includes("NOMBRE"));
+            if (idxNombre !== -1 && lineas[idxNombre + 1]) {
+                nombreHallado = `${lineas[idxNombre + 1]} ${lineas[idxNombre + 2] || ''}`.trim();
+            } else if (lineas.length > 2) {
+                nombreHallado = `${lineas[0]} ${lineas[1]}`.trim();
+            }
+
+            if (nombreHallado) {
+                document.getElementById('nombre').value = nombreHallado.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
+            }
+
+            // Buscar fecha de nacimiento para calcular edad
+            const regexFecha = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/;
+            const matchFecha = texto.match(regexFecha);
+            if (matchFecha) {
+                const anioNac = parseInt(matchFecha[3], 10);
+                const anioActual = new Date().getFullYear();
+                const edadCalculada = anioActual - anioNac;
+                if (edadCalculada >= 18 && edadCalculada <= 110) {
+                    document.getElementById('edad').value = edadCalculada;
+                }
+            }
+
+            // Buscar Sección Electoral
+            const matchSeccion = texto.match(/SECCI[OÓ]N\s*(\d{4})/i) || texto.match(/\b(\d{4})\b/);
+            if (matchSeccion) {
+                document.getElementById('seccion').value = matchSeccion[1];
+            }
+
+            mostrarToast("¡Datos de INE leídos exitosamente!");
+            document.getElementById('calle').focus();
         }
 
         const usuariosRef = collection(db, "usuarios");
