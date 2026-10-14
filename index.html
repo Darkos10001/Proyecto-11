@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS (XLSX) para exportación avanzada -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ZXing para lectura ultra rápida de códigos de barras / QR / PDF417 -->
+    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+    <!-- Tesseract.js para OCR avanzado -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
@@ -53,30 +57,44 @@
         </div>
     </div>
 
-    <!-- MODAL ESCÁNER AUTOMÁTICO REVERSO INE (PDF417 / CÓDIGO DE BARRAS) -->
-    <div id="modalEscanerAuto" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <!-- MODAL ESCÁNER INTELIGENTE MULTI-MOTOR (CÁMARA / SUBIDA) -->
+    <div id="modalEscanerMultiview" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
             <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-qrcode text-red-600"></i> Escaneo Automático (Reverso INE)
+                    <i class="fa-solid fa-camera-rotate text-red-600"></i> Escáner Inteligente INE (3 Vías)
                 </h3>
-                <button onclick="cerrarEscanerAuto()" class="text-slate-400 hover:text-slate-600 text-base">
+                <button onclick="cerrarEscanerMultiview()" class="text-slate-400 hover:text-slate-600 text-base">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 text-center mb-3">Apunta la cámara al código de barras grande del <b>reverso de la INE</b>. La captura se hará <b>automágicamente</b> en cuanto enfoque.</p>
+            <p class="text-xs text-slate-500 text-center mb-3">Alinea la credencial. El sistema detectará automáticamente el código o extraerá los datos.</p>
             
             <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-slate-900">
-                <video id="videoAuto" class="w-full h-64 object-cover" autoplay playsinline muted></video>
-                <div class="absolute inset-0 border-2 border-dashed border-red-400/60 pointer-events-none m-4 rounded-lg flex items-center justify-center animate-pulse">
-                    <span class="bg-red-900/80 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">Buscando código de barras...</span>
+                <video id="videoMultiview" class="w-full h-60 object-cover" autoplay playsinline muted></video>
+                <div class="absolute inset-0 border-2 border-dashed border-white/60 pointer-events-none m-4 rounded-lg flex items-center justify-center">
+                    <span id="scanStatusIndicator" class="bg-black/70 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full animate-pulse">Buscando enfoque y código...</span>
                 </div>
             </div>
-            <canvas id="canvasAuto" class="hidden"></canvas>
+            <canvas id="canvasMultiview" class="hidden"></canvas>
+            
+            <div id="statusProcesamiento" class="hidden w-full mt-3 text-xs text-center font-bold text-red-700 bg-red-50 p-2.5 rounded-xl border border-red-200">
+                <i class="fa-solid fa-spinner fa-spin mr-1"></i> Procesando datos de la credencial...
+            </div>
 
-            <button onclick="cerrarEscanerAuto()" class="mt-4 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
-                Cancelar Escaneo
+            <div class="w-full grid grid-cols-2 gap-2 mt-4">
+                <button onclick="dispararCapturaManual()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-camera"></i> Capturar Forzado
+                </button>
+                <label class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-upload"></i> Subir Imagen INE
+                    <input type="file" accept="image/*" class="hidden" onchange="subirImagenDirecta(event)">
+                </label>
+            </div>
+
+            <button onclick="cerrarEscanerMultiview()" class="mt-3 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
+                Cancelar
             </button>
         </div>
     </div>
@@ -112,7 +130,7 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Plataforma con Escáner Automático de INE</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma con Escáner Inteligente Multi-Vía</p>
                 </div>
             </div>
             
@@ -143,10 +161,10 @@
                     <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Admin</span>
                 </div>
 
-                <!-- BOTÓN ESCÁNER AUTOMÁTICO INE -->
+                <!-- BOTÓN ESCÁNER INTELIGENTE MULTI-VÍA -->
                 <div class="mb-4">
-                    <button type="button" onclick="abrirEscanerAuto()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-red-400"></i> Escanear INE Automático (Reverso)
+                    <button type="button" onclick="abrirEscanerMultiview()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-camera-rotate text-red-400"></i> Escanear INE Automático (Cámara / Subida)
                     </button>
                 </div>
 
@@ -396,9 +414,9 @@
         let usuarioActual = localStorage.getItem('usuarioActual') || null;
         let listaUsuariosCloud = {};
         let categoriaSeleccionada = 'Todos';
-        let mediaStreamAuto = null;
-        let escaneandoActivo = false;
-        let detectorBarcode = null;
+        let mediaStreamMultiview = null;
+        let codeReader = new ZXing.BrowserMultiFormatReader();
+        let intervaloEscaneo = null;
 
         window.togglePassword = function(idInput, idIcon) {
             const input = document.getElementById(idInput);
@@ -413,114 +431,187 @@
         };
 
         // ==========================================
-        // ESCÁNER AUTOMÁTICO CON BARCODE DETECTOR NATIVO
+        // ESCÁNER INTELIGENTE MULTI-VÍA (CÁMARA Y ARCHIVOS)
         // ==========================================
-        window.abrirEscanerAuto = async function() {
-            document.getElementById('modalEscanerAuto').classList.remove('hidden');
-            const video = document.getElementById('videoAuto');
-
-            // Verificar si el navegador soporta el detector de códigos nativo (Muy rápido en Chrome Android / Safari)
-            if (!('BarcodeDetector' in window)) {
-                mostrarToast("Tu navegador no soporta escaneo automático nativo. Usa la cámara trasera.", "error");
-                cerrarEscanerAuto();
-                return;
-            }
+        window.abrirEscanerMultiview = async function() {
+            document.getElementById('modalEscanerMultiview').classList.remove('hidden');
+            const video = document.getElementById('videoMultiview');
 
             try {
-                detectorBarcode = new BarcodeDetector({ formats: ['pdf417', 'qr_code', 'code_128', 'ean_13'] });
-                
-                mediaStreamAuto = await navigator.mediaDevices.getUserMedia({
+                // Seleccionar la mejor cámara trasera disponible con enfoque macro
+                const constraints = {
                     video: {
-                        facingMode: "environment",
+                        facingMode: { exact: "environment" },
                         width: { ideal: 1920 },
                         height: { ideal: 1080 }
                     }
-                });
-                
-                video.srcObject = mediaStreamAuto;
-                await video.play();
+                };
 
-                // Forzar enfoque continuo si el hardware lo soporta
-                const track = mediaStreamAuto.getVideoTracks()[0];
+                try {
+                    mediaStreamMultiview = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (e) {
+                    // Fallback a cualquier cámara si "environment" exacto falla
+                    mediaStreamMultiview = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+
+                video.srcObject = mediaStreamMultiview;
+                
+                // Intentar forzar enfoque continuo
+                const track = mediaStreamMultiview.getVideoTracks()[0];
                 const capabilities = track.getCapabilities();
                 if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
                     await track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
                 }
 
-                escaneandoActivo = true;
-                bucleEscaneoAutomatico();
+                // Iniciar escaneo automático en tiempo real por fotogramas
+                iniciarAnalisisContinuo();
+
             } catch (err) {
-                console.error("Error al iniciar cámara automática:", err);
-                mostrarToast("No se pudo iniciar la cámara para escaneo automático", "error");
-                cerrarEscanerAuto();
+                console.error("Error al iniciar cámara:", err);
+                mostrarToast("No se pudo acceder a la cámara trasera", "error");
             }
         };
 
-        window.cerrarEscanerAuto = function() {
-            escaneandoActivo = false;
-            document.getElementById('modalEscanerAuto').classList.add('hidden');
-            if (mediaStreamAuto) {
-                mediaStreamAuto.getTracks().forEach(track => track.stop());
-                mediaStreamAuto = null;
+        window.cerrarEscanerMultiview = function() {
+            document.getElementById('modalEscanerMultiview').classList.add('hidden');
+            document.getElementById('statusProcesamiento').classList.add('hidden');
+            if (intervaloEscaneo) clearInterval(intervaloEscaneo);
+            if (mediaStreamMultiview) {
+                mediaStreamMultiview.getTracks().forEach(track => track.stop());
+                mediaStreamMultiview = null;
             }
         };
 
-        async function bucleEscaneoAutomatico() {
-            const video = document.getElementById('videoAuto');
-            const canvas = document.getElementById('canvasAuto');
+        function iniciarAnalisisContinuo() {
+            const video = document.getElementById('videoMultiview');
+            const canvas = document.getElementById('canvasMultiview');
             const context = canvas.getContext('2d');
 
-            while (escaneandoActivo && video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            intervaloEscaneo = setInterval(async () => {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                try {
-                    const barcodes = await detectorBarcode.detect(canvas);
-                    if (barcodes.length > 0) {
-                        const codigoDetectado = barcodes[0].rawValue;
-                        procesarDatosINEAutomatico(codigoDetectado);
-                        cerrarEscanerAuto();
-                        break;
+                    // 1. Intentar leer Código de Barras o QR primero (más rápido)
+                    try {
+                        const imgDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                        const result = await codeReader.decodeFromImageUrl(imgDataUrl);
+                        if (result && result.text) {
+                            procesarTextoDetectado(result.text);
+                            cerrarEscanerMultiview();
+                            return;
+                        }
+                    } catch (err) {
+                        // Si no hay código de barras visible en este fotograma exacto, continúa buscando
                     }
-                } catch (e) {
-                    // Ignorar errores de fotograma individual mientras busca
                 }
+            }, 800); // Revisa cada 0.8 segundos
+        }
 
-                // Pausa breve de 150ms entre fotogramas para optimizar procesador y batería
-                await new Promise(resolve => setTimeout(resolve, 150));
+        window.dispararCapturaManual = function() {
+            const video = document.getElementById('videoMultiview');
+            const canvas = document.getElementById('canvasMultiview');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            ejecutarOCRInmediato(imageDataUrl);
+        };
+
+        window.subirImagenDirecta = function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Pre-procesar imagen con canvas para mejorar contraste antes del OCR
+                    preprocesarYAnalizarImagen(e.target.result);
+                };
+                reader.readAsDataURL(file);
             }
+        };
 
-            if (escaneandoActivo) {
-                requestAnimationFrame(bucleEscaneoAutomatico);
+        function preprocesarYAnalizarImagen(src) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // Dibujar y aplicar escala de grises y contraste para facilitar lectura a Tesseract
+                ctx.drawImage(img, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    let avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    // Aumentar contraste
+                    let contrast = 1.5;
+                    let val = यामुळे = (avg - 128) * contrast + 128;
+                    data[i] = data[i+1] = data[i+2] = val < 0 ? 0 : (val > 255 ? 255 : val);
+                }
+                ctx.putImageData(imageData, 0, 0);
+                ejecutarOCRInmediato(canvas.toDataURL('image/jpeg'));
+            };
+            img.src = src;
+        }
+
+        async function ejecutarOCRInmediato(imageSrc) {
+            const statusDiv = document.getElementById('statusProcesamiento');
+            statusDiv.classList.remove('hidden');
+            document.getElementById('scanStatusIndicator').textContent = "Analizando con OCR avanzado...";
+
+            try {
+                const worker = await Tesseract.createWorker('spa');
+                const ret = await worker.recognize(imageSrc);
+                await worker.terminate();
+
+                procesarTextoDetectado(ret.data.text);
+                cerrarEscanerMultiview();
+            } catch (error) {
+                console.error("Error OCR:", error);
+                mostrarToast("No se pudo extraer texto de la imagen", "error");
+                statusDiv.classList.add('hidden');
             }
         }
 
-        function procesarDatosINEAutomatico(texto) {
-            mostrarToast("¡Código INE capturado automáticamente!");
+        function procesarTextoDetectado(texto) {
+            mostrarToast("¡Datos extraídos correctamente de la INE!");
+            const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-            try {
-                // El reverso de la INE (PDF417) suele estar separado por '@' o saltos de línea con CURP y datos
-                const partes = texto.split('@');
-                if (partes.length >= 4) {
-                    // Apellido paterno, materno y nombre
-                    const nombreCompleto = `${partes[3] || ''} ${partes[1] || ''} ${partes[2] || ''}`.trim();
-                    if(nombreCompleto) document.getElementById('nombre').value = nombreCompleto;
-                } else {
-                    document.getElementById('nombre').value = "Ciudadano Escaneado INE";
-                }
-
-                // Extraer sección electoral si aparece en el código de barras
-                const matchSeccion = texto.match(/\b(\d{4})\b/);
-                if(matchSeccion) {
-                    document.getElementById('seccion').value = matchSeccion[1];
-                }
-
-                document.getElementById('edad').focus();
-            } catch (err) {
-                console.error("Error al parsear código INE:", err);
-                document.getElementById('nombre').value = texto.substring(0, 40);
+            // Detección de Nombre
+            let nombreHallado = "";
+            let idxNombre = lineas.findIndex(l => l.toUpperCase().includes("NOMBRE"));
+            if (idxNombre !== -1 && lineas[idxNombre + 1]) {
+                nombreHallado = `${lineas[idxNombre + 1]} ${lineas[idxNombre + 2] || ''}`.trim();
+            } else {
+                nombreHallado = lineas.slice(0, 2).join(" ");
             }
+
+            if (nombreHallado) {
+                document.getElementById('nombre').value = nombreHallado.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
+            }
+
+            // Detección de Fecha / Edad
+            const matchFecha = texto.match(/(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/);
+            if (matchFecha) {
+                const anioNac = parseInt(matchFecha[3], 10);
+                const edadCalculada = new Date().getFullYear() - anioNac;
+                if (edadCalculada >= 18 && edadCalculada <= 110) {
+                    document.getElementById('edad').value = edadCalculada;
+                }
+            }
+
+            // Detección de Sección Electoral
+            const matchSeccion = texto.match(/SECCI[OÓ]N\s*(\d{4})/i) || texto.match(/\b(\d{4})\b/);
+            if (matchSeccion) {
+                document.getElementById('seccion').value = matchSeccion[1];
+            }
+
+            document.getElementById('calle').focus();
         }
 
         const usuariosRef = collection(db, "usuarios");
@@ -583,7 +674,7 @@
                 actualizarPermisosUI();
                 mostrarToast(`¡Bienvenido, ${usuarioActual}!`);
             } else {
-                loginError.classList.remove('hidden');
+                loginError.classList.add('hidden');
             }
         });
 
