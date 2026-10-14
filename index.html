@@ -55,40 +55,43 @@
         </div>
     </div>
 
-    <!-- MODAL ESCÁNER OCR INE CON CÁMARA / ARCHIVO -->
+    <!-- MODAL ESCÁNER OCR INE CON CÁMARA (ENFOQUE OPTIMIZADO) -->
     <div id="modalEscanerOCR" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
             <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-id-card text-red-600"></i> Escanear INE con OCR
+                    <i class="fa-solid fa-camera-retro text-red-600"></i> Escanear INE con Cámara
                 </h3>
                 <button onclick="cerrarEscanerOCR()" class="text-slate-400 hover:text-slate-600 text-base">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 text-center mb-4">Captura una foto clara del frente de la credencial INE o sube una imagen desde tu dispositivo.</p>
+            <p class="text-xs text-slate-500 text-center mb-3">Enfoca claramente el frente de la credencial INE dentro del recuadro y presiona <b>Tomar Foto</b>.</p>
             
-            <div class="w-full space-y-3">
-                <video id="videoOCR" class="w-full h-48 bg-slate-900 rounded-xl object-cover border border-slate-300" autoplay playsinline></video>
-                <canvas id="canvasOCR" class="hidden"></canvas>
-                
-                <div id="statusOCR" class="hidden text-xs text-center font-bold text-red-700 bg-red-50 p-2.5 rounded-xl border border-red-200">
-                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Procesando texto de la INE...
-                </div>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <button id="btnCapturarOCR" onclick="capturarFotoOCR()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-camera"></i> Tomar Foto
-                    </button>
-                    <label class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow transition text-center cursor-pointer flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-upload"></i> Subir Imagen
-                        <input type="file" accept="image/*" class="hidden" onchange="subirImagenOCR(event)">
-                    </label>
+            <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-slate-900">
+                <video id="videoOCR" class="w-full h-56 object-cover" autoplay playsinline></video>
+                <div class="absolute inset-0 border-2 border-dashed border-white/40 pointer-events-none m-4 rounded-lg flex items-center justify-center">
+                    <span class="bg-black/60 text-white text-[10px] px-2 py-1 rounded">Alinea la INE aquí</span>
                 </div>
             </div>
+            <canvas id="canvasOCR" class="hidden"></canvas>
+            
+            <div id="statusOCR" class="hidden w-full mt-3 text-xs text-center font-bold text-red-700 bg-red-50 p-2.5 rounded-xl border border-red-200">
+                <i class="fa-solid fa-spinner fa-spin mr-1"></i> Leyendo datos de la credencial...
+            </div>
 
-            <button onclick="cerrarEscanerOCR()" class="mt-4 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
+            <div class="w-full grid grid-cols-2 gap-2 mt-4">
+                <button id="btnCapturarOCR" onclick="capturarFotoOCR()" class="bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-camera"></i> Tomar Foto
+                </button>
+                <label class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold py-3 px-3 rounded-xl shadow transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-upload"></i> Subir Imagen
+                    <input type="file" accept="image/*" class="hidden" onchange="subirImagenOCR(event)">
+                </label>
+            </div>
+
+            <button onclick="cerrarEscanerOCR()" class="mt-3 w-full bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition">
                 Cancelar
             </button>
         </div>
@@ -159,7 +162,7 @@
                 <!-- BOTÓN ESCÁNER OCR CÁMARA/FOTO -->
                 <div class="mb-4">
                     <button type="button" onclick="abrirEscanerOCR()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-id-card text-red-400"></i> Escanear INE (OCR Foto/Cámara)
+                        <i class="fa-solid fa-id-card text-red-400"></i> Escanear INE con Cámara
                     </button>
                 </div>
 
@@ -424,17 +427,33 @@
         };
 
         // ==========================================
-        // FUNCIONES OCR CÁMARA / IMAGEN (TESSERACT.JS)
+        // CÁMARA CON ENFOQUE FORZADO Y ALTA DEFINICIÓN
         // ==========================================
         window.abrirEscanerOCR = async function() {
             document.getElementById('modalEscanerOCR').classList.remove('hidden');
             const video = document.getElementById('videoOCR');
 
             try {
-                mediaStreamOCR = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" }
-                });
+                // Solicitar cámara trasera con alta resolución y enfoque continuo si el dispositivo lo soporta
+                const constraints = {
+                    video: {
+                        facingMode: "environment",
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                };
+
+                mediaStreamOCR = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = mediaStreamOCR;
+
+                // Intentar aplicar capacidades de enfoque automático avanzadas en navegadores móviles
+                const track = mediaStreamOCR.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                    await track.applyConstraints({
+                        advanced: [{ focusMode: "continuous" }]
+                    }).catch(e => console.log("Enfoque continuo no soportado directamente:", e));
+                }
             } catch (err) {
                 console.error("Error al acceder a la cámara:", err);
                 mostrarToast("No se pudo iniciar la cámara", "error");
@@ -455,11 +474,11 @@
             const canvas = document.getElementById('canvasOCR');
             const context = canvas.getContext('2d');
 
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const imageDataUrl = canvas.toDataURL('image/png');
+            const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
             ejecutarOCR(imageDataUrl);
         };
 
@@ -496,7 +515,6 @@
         function analizarTextoINE(texto) {
             const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-            // Buscar Nombres y Apellidos
             let nombreHallado = "";
             let idxNombre = lineas.findIndex(l => l.toUpperCase().includes("NOMBRE"));
             if (idxNombre !== -1 && lineas[idxNombre + 1]) {
@@ -509,7 +527,6 @@
                 document.getElementById('nombre').value = nombreHallado.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "");
             }
 
-            // Buscar fecha de nacimiento para calcular edad
             const regexFecha = /(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/;
             const matchFecha = texto.match(regexFecha);
             if (matchFecha) {
@@ -521,7 +538,6 @@
                 }
             }
 
-            // Buscar Sección Electoral
             const matchSeccion = texto.match(/SECCI[OÓ]N\s*(\d{4})/i) || texto.match(/\b(\d{4})\b/);
             if (matchSeccion) {
                 document.getElementById('seccion').value = matchSeccion[1];
