@@ -10,10 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS (XLSX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ZXing para lectura de códigos de barras / QR / PDF417 -->
+    <!-- ZXing para códigos de barras / QR -->
     <script type="text/javascript" src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
-    <!-- Tesseract.js para OCR -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
@@ -57,28 +55,30 @@
         </div>
     </div>
 
-    <!-- MODAL DE LECTURA DE CÁMARA EN TIEMPO REAL -->
+    <!-- MODAL DE CÁMARA CON AUTOCAPTURA IPHONE / IA -->
     <div id="modalCamaraEnVivo" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
             <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-video text-red-600"></i> Cámara en Vivo
+                    <i class="fa-solid fa-brain text-red-600"></i> Escáner con Inteligencia Artificial
                 </h3>
                 <button onclick="cerrarCamaraEnVivo()" class="text-slate-400 hover:text-slate-600 text-base">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 text-center mb-3">Sostén la credencial de forma firme para que enfoque el texto o código.</p>
+            <p class="text-xs text-slate-500 text-center mb-3">Enfoca el reverso (código de barras) o el frente de la credencial y presiona capturar.</p>
             
-            <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-black h-60 flex items-center justify-center">
+            <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-black h-64 flex items-center justify-center">
                 <video id="videoEnVivo" class="w-full h-full object-cover" autoplay playsinline muted></video>
-                <div class="absolute inset-0 border-2 border-dashed border-white/50 m-4 rounded-lg pointer-events-none"></div>
+                <div class="absolute inset-0 border-2 border-dashed border-emerald-400/80 m-6 rounded-lg pointer-events-none flex items-center justify-center">
+                    <span id="txtAutoEstado" class="bg-black/70 text-emerald-400 text-[11px] font-bold px-3 py-1 rounded-full">Listo para capturar</span>
+                </div>
             </div>
 
             <div class="w-full mt-4 flex gap-2">
-                <button onclick="capturarFotogramaVivo()" class="w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-camera"></i> Escanear Fotograma Actual
+                <button onclick="capturarYAnalizarConIA()" class="w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> Capturar y Analizar con IA
                 </button>
             </div>
 
@@ -119,7 +119,7 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Plataforma de Control y Escáner Nativo de INE</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma de Control con Inteligencia Artificial</p>
                 </div>
             </div>
             
@@ -140,7 +140,7 @@
     <!-- CONTENIDO PRINCIPAL -->
     <main class="max-w-7xl mx-auto px-4 py-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
         
-        <!-- FORMULARIO DE REGISTRO (Columna Izquierda) -->
+        <!-- FORMULARIO DE REGISTRO -->
         <section class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
             <div>
                 <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-100">
@@ -150,32 +150,27 @@
                     <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Admin</span>
                 </div>
 
-                <!-- BOTONES DE ESCANEO: CÁMARA NATIVA Y ARCHIVO -->
+                <!-- BOTONES DE ESCANEO CON IA -->
                 <div class="mb-4 space-y-2">
-                    <!-- Opción 1: Usa la app de cámara oficial del celular (Garantiza Enfoque Automático y Macro) -->
-                    <label class="w-full bg-slate-900 hover:bg-slate-800 active:bg-black text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-camera text-red-400 text-sm"></i>
-                        <span>Tomar Foto INE (Cámara Nativa / Enfoque IA)</span>
-                        <input type="file" accept="image/*" capture="environment" class="hidden" onchange="procesarArchivoEntrada(event)">
-                    </label>
+                    <button type="button" onclick="abrirCamaraEnVivo()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-red-400"></i> Escanear INE con IA (Cámara en Vivo)
+                    </button>
 
                     <div class="grid grid-cols-2 gap-2">
-                        <!-- Opción 2: Subir foto ya guardada de la galería -->
                         <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-image text-slate-500"></i> Subir Galería
-                            <input type="file" accept="image/*" class="hidden" onchange="procesarArchivoEntrada(event)">
+                            <i class="fa-solid fa-camera text-slate-500"></i> Cámara Nativa IA
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="procesarArchivoConIA(event)">
                         </label>
 
-                        <!-- Opción 3: Probar cámara web integrada en el navegador -->
-                        <button type="button" onclick="abrirCamaraEnVivo()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-video text-slate-500"></i> Cámara Web
-                        </button>
+                        <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-image text-slate-500"></i> Subir Galería IA
+                            <input type="file" accept="image/*" class="hidden" onchange="procesarArchivoConIA(event)">
+                        </label>
                     </div>
                 </div>
 
-                <!-- Mensaje de estado al procesar -->
                 <div id="indicadorProceso" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 text-center animate-pulse">
-                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Leyendo datos de la credencial...
+                    <i class="fa-solid fa-brain fa-spin mr-1"></i> La Inteligencia Artificial está analizando la INE...
                 </div>
 
                 <form id="registroForm" class="space-y-4">
@@ -263,7 +258,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" id="btnGuardar" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+                    <button type="submit" id="btnGuardar" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Registro
                     </button>
                 </form>
@@ -317,7 +312,7 @@
             </div>
         </section>
 
-        <!-- TABLA Y REGISTROS (Columna Derecha) -->
+        <!-- TABLA Y REGISTROS -->
         <section class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
                 <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
@@ -334,7 +329,7 @@
                 </div>
             </div>
 
-            <!-- FILTROS Y CLASIFICACIÓN POR EDAD -->
+            <!-- FILTROS -->
             <div class="mb-4 space-y-3">
                 <div class="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-semibold">
                     <button onclick="filtrarCategoria('Todos')" id="tabTodos" class="flex-1 py-2 px-3 rounded-lg bg-white shadow text-red-700 border border-slate-200 transition text-center font-bold">
@@ -351,14 +346,13 @@
                     </button>
                 </div>
 
-                <!-- Buscador -->
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-search"></i></span>
                     <input type="text" id="buscador" onkeyup="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Buscar por nombre, calle, sección o teléfono...">
                 </div>
             </div>
 
-            <!-- Tabla de Datos -->
+            <!-- Tabla -->
             <div class="overflow-x-auto flex-grow rounded-xl border border-slate-200 max-h-[480px]">
                 <table id="tablaRegistros" class="w-full text-left border-collapse">
                     <thead class="bg-slate-100 text-slate-700 uppercase text-[11px] font-bold tracking-wider sticky top-0 z-10">
@@ -400,7 +394,7 @@
         <span id="toastMsg" class="text-sm font-medium">Operación exitosa</span>
     </div>
 
-    <!-- SCRIPTS MÓDULO FIREBASE Y PROCESAMIENTO -->
+    <!-- SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -426,6 +420,9 @@
         let categoriaSeleccionada = 'Todos';
         let mediaStreamVivo = null;
 
+        // INSERTA AQUÍ TU CLAVE DE GEMINI API (Obtenla gratis en Google AI Studio)
+        const GEMINI_API_KEY = "TU_CLAVE_DE_GEMINI_API_AQUÍ";
+
         window.togglePassword = function(idInput, idIcon) {
             const input = document.getElementById(idInput);
             const icon = document.getElementById(idIcon);
@@ -439,132 +436,24 @@
         };
 
         // =========================================================
-        // MOTOR PRINCIPAL DE LECTURA DE IMAGEN (NATIVO / SUBIDO)
-        // =========================================================
-        window.procesarArchivoEntrada = function(event) {
-            const archivo = event.target.files[0];
-            if (!archivo) return;
-
-            const lector = new FileReader();
-            lector.onload = function(e) {
-                analizarImagenCompleta(e.target.result);
-            };
-            lector.readAsDataURL(archivo);
-            event.target.value = ''; // Resetear input
-        };
-
-        async function analizarImagenCompleta(dataUrl) {
-            const indicador = document.getElementById('indicadorProceso');
-            indicador.classList.remove('hidden');
-
-            try {
-                // Preprocesar imagen en Canvas para alta definición
-                const img = await cargarImagenAsync(dataUrl);
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Escalar a una resolución óptima para lectura (1600px ancho)
-                const escala = 1600 / img.width;
-                canvas.width = 1600;
-                canvas.height = img.height * escala;
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                const imagenOptimizada = canvas.toDataURL('image/jpeg', 0.95);
-
-                // VIA 1: Intentar leer Código PDF417 / QR con ZXing
-                let exitoCodigo = false;
-                try {
-                    const codeReader = new ZXing.BrowserMultiFormatReader();
-                    const resultadoCode = await codeReader.decodeFromImageUrl(imagenOptimizada);
-                    if (resultadoCode && resultadoCode.text) {
-                        extraerYLlenarCampos(resultadoCode.text);
-                        exitoCodigo = true;
-                    }
-                } catch (e) {
-                    console.log("No se detectó código de barras o QR. Continuando con OCR...");
-                }
-
-                // VIA 2: Si no fue código de barras, ejecutar OCR Tesseract.js
-                if (!exitoCodigo) {
-                    const worker = await Tesseract.createWorker('spa');
-                    const resultadoOCR = await worker.recognize(imagenOptimizada);
-                    await worker.terminate();
-
-                    if (resultadoOCR && resultadoOCR.data && resultadoOCR.data.text) {
-                        extraerYLlenarCampos(resultadoOCR.data.text);
-                    } else {
-                        mostrarToast("No se pudo leer la información de la INE", "error");
-                    }
-                }
-            } catch (err) {
-                console.error("Error al procesar la imagen:", err);
-                mostrarToast("Error al procesar el archivo seleccionado", "error");
-            } finally {
-                indicador.classList.add('hidden');
-            }
-        }
-
-        function cargarImagenAsync(src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = src;
-            });
-        }
-
-        function extraerYLlenarCampos(texto) {
-            mostrarToast("¡INE leída con éxito!");
-            const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-
-            // Detección de Nombre Completo
-            let nombre = "";
-            let idxNombre = lineas.findIndex(l => l.toUpperCase().includes("NOMBRE"));
-            if (idxNombre !== -1 && lineas[idxNombre + 1]) {
-                nombre = `${lineas[idxNombre + 1]} ${lineas[idxNombre + 2] || ''}`.trim();
-            } else if (lineas.length > 0) {
-                nombre = lineas.slice(0, 2).join(" ");
-            }
-
-            if (nombre) {
-                document.getElementById('nombre').value = nombre.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
-            }
-
-            // Detección de Fecha de Nacimiento / Edad
-            const matchFecha = texto.match(/(\d{2})[\/\-\.](\d{2})[\/\-\.](\d{4})/);
-            if (matchFecha) {
-                const anioNac = parseInt(matchFecha[3], 10);
-                const edadCalculada = new Date().getFullYear() - anioNac;
-                if (edadCalculada >= 18 && edadCalculada <= 110) {
-                    document.getElementById('edad').value = edadCalculada;
-                }
-            }
-
-            // Detección de Sección Electoral
-            const matchSeccion = texto.match(/SECCI[OÓ]N\s*(\d{4})/i) || texto.match(/\b(\d{4})\b/);
-            if (matchSeccion) {
-                document.getElementById('seccion').value = matchSeccion[1];
-            }
-
-            document.getElementById('calle').focus();
-        }
-
-        // =========================================================
-        // CÁMARA WEB EN VIVO (OPCIÓN SECUNDARIA)
+        // CÁMARA EN VIVO
         // =========================================================
         window.abrirCamaraEnVivo = async function() {
             document.getElementById('modalCamaraEnVivo').classList.remove('hidden');
             const video = document.getElementById('videoEnVivo');
-
             try {
                 mediaStreamVivo = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: "environment" }
+                    video: { facingMode: { exact: "environment" } }
                 });
-                video.srcObject = mediaStreamVivo;
-            } catch (err) {
-                console.error("Error al abrir cámara en vivo:", err);
-                mostrarToast("No se pudo iniciar la cámara en vivo", "error");
+            } catch (e) {
+                try {
+                    mediaStreamVivo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                } catch (err) {
+                    mediaStreamVivo = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
             }
+            video.srcObject = mediaStreamVivo;
+            await video.play();
         };
 
         window.cerrarCamaraEnVivo = function() {
@@ -575,7 +464,7 @@
             }
         };
 
-        window.capturarFotogramaVivo = function() {
+        window.capturarYAnalizarConIA = function() {
             const video = document.getElementById('videoEnVivo');
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth || 1280;
@@ -583,12 +472,84 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+            const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
             cerrarCamaraEnVivo();
-            analizarImagenCompleta(canvas.toDataURL('image/jpeg', 0.95));
+            enviarImagenAGemini(base64Image);
         };
 
         // =========================================================
-        // AUTENTICACIÓN Y GESTIÓN DE FIREBASE
+        // PROCESAMIENTO DE ARCHIVO / GALERÍA
+        // =========================================================
+        window.procesarArchivoConIA = function(event) {
+            const archivo = event.target.files[0];
+            if (!archivo) return;
+
+            const lector = new FileReader();
+            lector.onload = function(e) {
+                const base64Image = e.target.result.split(',')[1];
+                enviarImagenAGemini(base64Image);
+            };
+            lector.readAsDataURL(archivo);
+            event.target.value = '';
+        };
+
+        // =========================================================
+        // LLAMADA A LA INTELIGENCIA ARTIFICIAL (GEMINI API)
+        // =========================================================
+        async function enviarImagenAGemini(base64Image) {
+            const indicador = document.getElementById('indicadorProceso');
+            indicador.classList.remove('hidden');
+
+            try {
+                const promptText = `Analiza esta imagen de una credencial INE de México y extrae estrictamente los siguientes datos en formato JSON puro (sin comillas de markdown como \`\`\`json):
+                {
+                  "nombre": "Nombre completo sin apellidos primero, o como aparezca en la credencial",
+                  "edad": número entero calculado a partir de su fecha de nacimiento (mínimo 18),
+                  "calle": "nombre de la calle o avenida",
+                  "numero": "número exterior o interior",
+                  "seccion": "número de sección electoral de 4 dígitos"
+                }`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inlineData: { mimeType: "image/jpeg", data: base64Image } }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const textoRespuesta = data.candidates[0].content.parts[0].text;
+                
+                // Limpiar formato markdown por si la IA lo incluye
+                const jsonLimpiado = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
+                const datosINE = JSON.parse(jsonLimpiado);
+
+                // Rellenar formulario automáticamente
+                if (datosINE.nombre) document.getElementById('nombre').value = datosINE.nombre;
+                if (datosINE.edad) document.getElementById('edad').value = datosINE.edad;
+                if (datosINE.calle) document.getElementById('calle').value = datosINE.calle;
+                if (datosINE.numero) document.getElementById('numero').value = datosINE.numero;
+                if (datosINE.seccion) document.getElementById('seccion').value = datosINE.seccion;
+
+                mostrarToast("¡Datos extraídos con éxito por la Inteligencia Artificial!");
+                document.getElementById('telefono').focus();
+
+            } catch (err) {
+                console.error("Error con la IA:", err);
+                mostrarToast("No se pudo interpretar la INE con la IA. Verifica tu API Key.", "error");
+            } finally {
+                indicador.classList.add('hidden');
+            }
+        }
+
+        // =========================================================
+        // FIREBASE Y GESTIÓN DE DATOS
         // =========================================================
         const usuariosRef = collection(db, "usuarios");
         onSnapshot(usuariosRef, async (snapshot) => {
@@ -602,12 +563,10 @@
                 listaUsuariosCloud["Admin"] = "admin1234";
             }
 
-            if (usuarioActual) {
-                if (listaUsuariosCloud[usuarioActual]) {
-                    actualizarPermisosUI();
-                } else {
-                    cerrarSesion();
-                }
+            if (usuarioActual && listaUsuariosCloud[usuarioActual]) {
+                actualizarPermisosUI();
+            } else if (usuarioActual) {
+                cerrarSesion();
             }
         });
 
@@ -664,25 +623,14 @@
 
         document.getElementById('crearUsuarioForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (usuarioActual !== 'Admin') {
-                mostrarToast('Acceso denegado', 'error');
-                return;
-            }
-
+            if (usuarioActual !== 'Admin') return;
             const nuevoUser = document.getElementById('nuevoUser').value.trim();
             const nuevoPass = document.getElementById('nuevoPass').value.trim();
-
-            if (listaUsuariosCloud[nuevoUser]) {
-                mostrarToast('El usuario ya existe en la nube', 'error');
-                return;
-            }
-
             try {
                 await setDoc(doc(db, "usuarios", nuevoUser), { password: nuevoPass });
-                mostrarToast(`¡Usuario ${nuevoUser} creado en la nube!`);
+                mostrarToast(`¡Usuario ${nuevoUser} creado!`);
                 document.getElementById('crearUsuarioForm').reset();
             } catch (error) {
-                console.error("Error al crear usuario:", error);
                 mostrarToast('Error al conectar con la nube', 'error');
             }
         });
@@ -690,14 +638,12 @@
         document.getElementById('cambiarPassForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const nuevaPass = document.getElementById('passActualizar').value.trim();
-
             if (usuarioActual) {
                 try {
                     await updateDoc(doc(db, "usuarios", usuarioActual), { password: nuevaPass });
-                    mostrarToast('¡Contraseña actualizada en la nube!');
+                    mostrarToast('¡Contraseña actualizada!');
                     document.getElementById('cambiarPassForm').reset();
                 } catch (error) {
-                    console.error("Error al actualizar pass:", error);
                     mostrarToast('No se pudo actualizar', 'error');
                 }
             }
@@ -716,69 +662,28 @@
         function renderizarListaColaboradores() {
             const contenedor = document.getElementById('listaColaboradoresCuerpo');
             contenedor.innerHTML = '';
-
-            const usuariosKeys = Object.keys(listaUsuariosCloud);
-            if(usuariosKeys.length === 0) {
-                contenedor.innerHTML = `<p class="text-center text-slate-400 py-6 text-sm">Cargando cuentas...</p>`;
-                return;
-            }
-
-            usuariosKeys.forEach((user) => {
+            Object.keys(listaUsuariosCloud).forEach((user) => {
                 const div = document.createElement('div');
                 div.className = "flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 text-sm";
                 div.innerHTML = `
-                    <div>
-                        <span class="font-bold text-slate-800">${user}</span> ${user === usuarioActual ? '<span class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">Tú</span>' : ''}
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="modificarPassColaborador('${user}')" class="bg-amber-50 text-amber-600 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition" title="Cambiar Contraseña">
-                            <i class="fa-solid fa-key"></i> Modificar
-                        </button>
-                        ${user !== 'Admin' ? `
-                            <button onclick="eliminarColaborador('${user}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition" title="Eliminar cuenta">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        ` : ''}
-                    </div>
+                    <span class="font-bold text-slate-800">${user}</span>
+                    ${user !== 'Admin' ? `<button onclick="eliminarColaborador('${user}')" class="bg-rose-50 text-rose-600 px-2.5 py-1 rounded-lg text-xs font-semibold">Eliminar</button>` : ''}
                 `;
                 contenedor.appendChild(div);
             });
         }
 
-        window.modificarPassColaborador = async function(user) {
-            if (usuarioActual !== 'Admin') return;
-            const nuevaClave = prompt(`Ingresa la nueva contraseña para el usuario "${user}":`);
-            if (nuevaClave && nuevaClave.trim() !== '') {
-                try {
-                    await updateDoc(doc(db, "usuarios", user), { password: nuevaClave.trim() });
-                    mostrarToast(`Contraseña de ${user} actualizada en la nube`);
-                    renderizarListaColaboradores();
-                } catch (err) {
-                    mostrarToast('Error al actualizar', 'error');
-                }
-            }
-        }
-
         window.eliminarColaborador = async function(user) {
-            if (usuarioActual !== 'Admin') return;
-            if(confirm(`¿Estás seguro de eliminar al usuario "${user}" de la nube?`)) {
-                try {
-                    await deleteDoc(doc(db, "usuarios", user));
-                    mostrarToast(`Usuario ${user} eliminado`);
-                    renderizarListaColaboradores();
-                } catch (err) {
-                    mostrarToast('Error al eliminar', 'error');
-                }
+            if (confirm(`¿Eliminar a ${user}?`)) {
+                await deleteDoc(doc(db, "usuarios", user));
+                renderizarListaColaboradores();
             }
         }
 
         function actualizarTiempo() {
             const ahora = new Date();
-            const opcionesFecha = { year: 'numeric', month: '2-digit', day: '2-digit' };
-            const opcionesHora = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-
-            document.getElementById('fechaRegistro').value = ahora.toLocaleDateString('es-MX', opcionesFecha);
-            document.getElementById('horaRegistro').value = ahora.toLocaleTimeString('es-MX', opcionesHora);
+            document.getElementById('fechaRegistro').value = ahora.toLocaleDateString('es-MX');
+            document.getElementById('horaRegistro').value = ahora.toLocaleTimeString('es-MX');
             document.getElementById('liveClock').textContent = ahora.toLocaleTimeString('es-MX');
         }
         setInterval(actualizarTiempo, 1000);
@@ -788,18 +693,10 @@
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toastMsg');
             const toastIcon = document.getElementById('toastIcon');
-
             toastMsg.textContent = mensaje;
-            if(tipo === 'success') {
-                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
-            } else {
-                toastIcon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-lg";
-            }
-
+            toastIcon.className = tipo === 'success' ? "fa-solid fa-circle-check text-emerald-400 text-lg" : "fa-solid fa-triangle-exclamation text-rose-400 text-lg";
             toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
         }
 
         function obtenerCategoriaEdad(edad) {
@@ -815,27 +712,13 @@
         const form = document.getElementById('registroForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const nombreIngresado = document.getElementById('nombre').value.trim();
             const edadIngresada = parseInt(document.getElementById('edad').value.trim(), 10);
-
-            if (!edadIngresada || edadIngresada < 18) {
-                mostrarToast('Ingresa una edad válida (Mínimo 18 años)', 'error');
-                return;
-            }
-
-            const existeNombre = listaGlobalRegistros.some(reg => reg.nombre.toLowerCase() === nombreIngresado.toLowerCase());
-            if (existeNombre) {
-                mostrarToast(`El nombre "${nombreIngresado}" ya está registrado`, 'error');
-                return;
-            }
-
-            const categoriaCalculada = obtenerCategoriaEdad(edadIngresada);
 
             const nuevoDato = {
                 nombre: nombreIngresado,
                 edad: edadIngresada,
-                categoria: categoriaCalculada,
+                categoria: obtenerCategoriaEdad(edadIngresada),
                 calle: document.getElementById('calle').value.trim(),
                 cruzamientos: document.getElementById('cruzamientos').value.trim(),
                 numero: document.getElementById('numero').value.trim(),
@@ -851,235 +734,87 @@
             form.reset();
             actualizarTiempo();
             mostrarToast('¡Registro guardado con éxito!');
-
-            try {
-                await addDoc(coleccionRef, nuevoDato);
-            } catch (error) {
-                console.error("Error al sincronizar: ", error);
-                mostrarToast('Guardado localmente. Se sincronizará al recuperar red.', 'error');
-            }
+            await addDoc(coleccionRef, nuevoDato);
         });
 
         let listaGlobalRegistros = [];
         onSnapshot(coleccionRef, (snapshot) => {
-            const tbody = document.getElementById('tablaCuerpo');
-            tbody.innerHTML = '';
             listaGlobalRegistros = [];
-
-            if (snapshot.empty) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-10 text-slate-400">No hay registros guardados todavía.</td></tr>`;
-                document.getElementById('totalRegistros').textContent = 'Total de registros: 0';
-                actualizarConteoCategorias([]);
-                return;
-            }
-
             snapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                listaGlobalRegistros.push({ id: docSnap.id, ...data });
+                listaGlobalRegistros.push({ id: docSnap.id, ...docSnap.data() });
             });
-
             actualizarConteoCategorias(listaGlobalRegistros);
             filtrarRegistros();
         });
 
         function actualizarConteoCategorias(datos) {
-            const cntTodos = datos.length;
-            const cntJovenes = datos.filter(d => d.categoria === 'Jóvenes').length;
-            const cntAdultos = datos.filter(d => d.categoria === 'Adultos').length;
-            const cntMayores = datos.filter(d => d.categoria === 'Adultos Mayores').length;
-
-            document.getElementById('cntTodos').textContent = cntTodos;
-            document.getElementById('cntJovenes').textContent = cntJovenes;
-            document.getElementById('cntAdultos').textContent = cntAdultos;
-            document.getElementById('cntMayores').textContent = cntMayores;
+            document.getElementById('cntTodos').textContent = datos.length;
+            document.getElementById('cntJovenes').textContent = datos.filter(d => d.categoria === 'Jóvenes').length;
+            document.getElementById('cntAdultos').textContent = datos.filter(d => d.categoria === 'Adultos').length;
+            document.getElementById('cntMayores').textContent = datos.filter(d => d.categoria === 'Adultos Mayores').length;
         }
 
         window.filtrarCategoria = function(categoria) {
             categoriaSeleccionada = categoria;
-            const tabs = ['Todos', 'Jovenes', 'Adultos', 'Mayores'];
-            
-            tabs.forEach(tab => {
-                const btn = document.getElementById(`tab${tab}`);
-                btn.className = "flex-1 py-2 px-3 rounded-lg text-slate-600 hover:bg-white/50 transition text-center";
+            ['Todos', 'Jovenes', 'Adultos', 'Mayores'].forEach(tab => {
+                document.getElementById(`tab${tab}`).className = "flex-1 py-2 px-3 rounded-lg text-slate-600 hover:bg-white/50 transition text-center";
             });
-
-            let activeTabId = 'tabTodos';
-            if (categoria === 'Jóvenes') activeTabId = 'tabJovenes';
-            if (categoria === 'Adultos') activeTabId = 'tabAdultos';
-            if (categoria === 'Adultos Mayores') activeTabId = 'tabMayores';
-
-            document.getElementById(activeTabId).className = "flex-1 py-2 px-3 rounded-lg bg-white shadow text-red-700 border border-slate-200 transition text-center font-bold";
+            let activeId = categoria === 'Jóvenes' ? 'tabJovenes' : (categoria === 'Adultos' ? 'tabAdultos' : (categoria === 'Adultos Mayores' ? 'tabMayores' : 'tabTodos'));
+            document.getElementById(activeId).className = "flex-1 py-2 px-3 rounded-lg bg-white shadow text-red-700 border border-slate-200 transition text-center font-bold";
             filtrarRegistros();
         }
 
         window.filtrarRegistros = function() {
             const texto = document.getElementById('buscador').value.toLowerCase();
             let filtrados = listaGlobalRegistros;
-
-            if (categoriaSeleccionada !== 'Todos') {
-                filtrados = filtrados.filter(item => item.categoria === categoriaSeleccionada);
-            }
-
-            if (texto !== '') {
-                filtrados = filtrados.filter(item => 
-                    item.nombre.toLowerCase().includes(texto) ||
-                    item.calle.toLowerCase().includes(texto) ||
-                    item.seccion.toLowerCase().includes(texto) ||
-                    item.telefono.toLowerCase().includes(texto)
-                );
-            }
-
+            if (categoriaSeleccionada !== 'Todos') filtrados = filtrados.filter(item => item.categoria === categoriaSeleccionada);
+            if (texto !== '') filtrados = filtrados.filter(item => item.nombre.toLowerCase().includes(texto) || item.calle.toLowerCase().includes(texto));
             renderizarTabla(filtrados);
         }
 
         function renderizarTabla(datos) {
             const tbody = document.getElementById('tablaCuerpo');
             tbody.innerHTML = '';
-
             if (datos.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron registros para este filtro.</td></tr>`;
-                document.getElementById('totalRegistros').textContent = `Total de registros: 0`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">No se encontraron registros.</td></tr>`;
+                document.getElementById('totalRegistros').textContent = `Total: 0`;
                 return;
             }
-
             datos.forEach((item) => {
-                let badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
-                if (item.categoria === 'Adultos') badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                if (item.categoria === 'Adultos Mayores') badgeColor = "bg-purple-50 text-purple-700 border-purple-200";
-
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
                 tr.innerHTML = `
-                    <td class="p-3 font-semibold text-slate-800">
-                        ${item.nombre}
-                        <div class="text-[10px] text-slate-400 font-normal">Por: ${item.registradoPor || 'Admin'}</div>
-                    </td>
-                    <td class="p-3 text-xs">
-                        <span class="font-bold text-slate-800">${item.edad || 'N/I'} años</span><br>
-                        <span class="inline-block mt-0.5 text-[10px] px-2 py-0.5 rounded-full font-semibold border ${badgeColor}">
-                            ${item.categoria || 'Sin clase'}
-                        </span>
-                    </td>
-                    <td class="p-3 text-slate-600 text-xs">
-                        <span class="font-medium text-slate-700">Calle:</span> ${item.calle} #${item.numero}<br>
-                        <span class="font-medium text-slate-700">Cruces:</span> ${item.cruzamientos}<br>
-                        <span class="font-medium text-slate-700">Sección:</span> ${item.seccion}
-                    </td>
-                    <td class="p-3 text-slate-600 text-xs">
-                        <span class="font-medium text-slate-700"><i class="fa-solid fa-phone text-[10px]"></i></span> ${item.telefono}<br>
-                        <span class="font-medium text-slate-700"><i class="fa-brands fa-facebook text-[10px]"></i></span> ${item.facebook}
-                    </td>
-                    <td class="p-3 text-slate-500 text-xs whitespace-nowrap">
-                        <span class="font-medium text-slate-700">${item.fecha}</span><br>
-                        ${item.hora}
-                    </td>
-                    <td class="p-3 text-center">
-                        <button onclick="eliminarRegistro('${item.id}')" class="bg-rose-50 text-rose-600 hover:bg-rose-100 p-2 rounded-xl transition" title="Eliminar registro">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
-                    </td>
+                    <td class="p-3 font-semibold text-slate-800">${item.nombre}</td>
+                    <td class="p-3 text-xs"><span class="font-bold">${item.edad}a</span> (${item.categoria})</td>
+                    <td class="p-3 text-slate-600 text-xs">${item.calle} #${item.numero}, Sec: ${item.seccion}</td>
+                    <td class="p-3 text-slate-600 text-xs">${item.telefono}</td>
+                    <td class="p-3 text-slate-500 text-xs">${item.fecha}</td>
+                    <td class="p-3 text-center"><button onclick="eliminarRegistro('${item.id}')" class="text-rose-600"><i class="fa-solid fa-trash-can"></i></button></td>
                 `;
                 tbody.appendChild(tr);
             });
-
-            document.getElementById('totalRegistros').textContent = `Total de registros en vista: ${datos.length}`;
+            document.getElementById('totalRegistros').textContent = `Total: ${datos.length}`;
         }
 
         window.eliminarRegistro = async function(id) {
-            if(confirm('¿Estás seguro de que deseas eliminar este registro permanentemente de la base de datos?')) {
-                try {
-                    await deleteDoc(doc(db, "registros", id));
-                    mostrarToast('Registro eliminado correctamente');
-                } catch (error) {
-                    console.error("Error al eliminar: ", error);
-                    mostrarToast('No se pudo eliminar el registro', 'error');
-                }
-            }
+            if(confirm('¿Eliminar registro?')) await deleteDoc(doc(db, "registros", id));
         }
 
         window.exportarExcelConEstilosProfesionales = function() {
-            if(listaGlobalRegistros.length === 0) {
-                mostrarToast('No hay datos para exportar', 'error');
-                return;
-            }
-
-            const datosOrdenados = [...listaGlobalRegistros].sort((a, b) => {
-                if (a.categoria < b.categoria) return -1;
-                if (a.categoria > b.categoria) return 1;
-                return a.edad - b.edad;
-            });
-
-            let aoa = [
-                ["REPORTE OFICIAL - ACTIVISMO 2027", "", "", "", "", "", "", "", "", "", "", "", ""],
-                ["Fecha de emisión:", new Date().toLocaleDateString(), "", "", "", "", "", "", "", "", "", "", ""],
-                ["Total Registrados:", datosOrdenados.length, "", "", "", "", "", "", "", "", "", "", ""],
-                ["", "", "", "", "", "", "", "", "", "", "", "", ""],
-                ["No.", "Nombre Completo", "Edad", "Categoría", "Calle", "Cruzamientos", "Número", "Sección", "Teléfono", "Facebook", "Registrado Por", "Fecha", "Hora"]
-            ];
-
-            datosOrdenados.forEach((item, index) => {
-                aoa.push([
-                    index + 1,
-                    item.nombre,
-                    item.edad,
-                    item.categoria,
-                    item.calle,
-                    item.cruzamientos,
-                    item.numero,
-                    item.seccion,
-                    item.telefono,
-                    item.facebook,
-                    item.registradoPor || 'Admin',
-                    item.fecha,
-                    item.hora
-                ]);
-            });
-
-            const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-            worksheet['!cols'] = [
-                { wch: 6 }, { wch: 28 }, { wch: 8 }, { wch: 18 }, { wch: 18 }, { wch: 20 }, 
-                { wch: 10 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 16 }, { wch: 14 }, { wch: 12 }
-            ];
-
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Activismo 2027");
-            XLSX.writeFile(workbook, "Activismo_2027_Reporte.xlsx");
-            mostrarToast('¡Reporte de Excel descargado con éxito!');
+            let aoa = [["Nombre", "Edad", "Categoría", "Calle", "Teléfono", "Fecha"]];
+            listaGlobalRegistros.forEach(i => aoa.push([i.nombre, i.edad, i.categoria, i.calle, i.telefono, i.fecha]));
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte");
+            XLSX.writeFile(wb, "Activismo_2027.xlsx");
         }
 
         window.exportarAccessCSV = function() {
-            if(listaGlobalRegistros.length === 0) {
-                mostrarToast('No hay datos para exportar', 'error');
-                return;
-            }
-            let csvContent = "data:text/csv;charset=utf-8,ID,Nombre,Edad,Categoria,Calle,Cruzamientos,Numero,Seccion,Telefono,Facebook,RegistradoPor,Fecha,Hora\r\n";
-            listaGlobalRegistros.forEach((item, index) => {
-                let row = [
-                    index + 1,
-                    `"${item.nombre}"`,
-                    `"${item.edad || ''}"`,
-                    `"${item.categoria || ''}"`,
-                    `"${item.calle}"`,
-                    `"${item.cruzamientos}"`,
-                    `"${item.numero}"`,
-                    `"${item.seccion}"`,
-                    `"${item.telefono}"`,
-                    `"${item.facebook}"`,
-                    `"${item.registradoPor || 'Admin'}"`,
-                    `"${item.fecha}"`,
-                    `"${item.hora}"`
-                ].join(",");
-                csvContent += row + "\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
+            let csv = "Nombre,Edad,Categoría,Calle,Teléfono,Fecha\r\n" + listaGlobalRegistros.map(i => `"${i.nombre}",${i.edad},"${i.categoria}","${i.calle}","${i.telefono}","${i.fecha}"`).join("\r\n");
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "Activismo_2027_Access.csv");
-            document.body.appendChild(link);
+            link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+            link.download = "Activismo_2027.csv";
             link.click();
-            document.body.removeChild(link);
-            mostrarToast('Archivo CSV para Access descargado');
         }
     </script>
 </body>
