@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- SheetJS (XLSX) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Tesseract.js para OCR local -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col justify-between font-sans text-slate-800">
 
@@ -53,19 +55,19 @@
         </div>
     </div>
 
-    <!-- MODAL DE CÁMARA CON IA -->
+    <!-- MODAL DE CÁMARA EN VIVO -->
     <div id="modalCamaraEnVivo" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 flex flex-col items-center">
             <div class="w-full flex justify-between items-center pb-3 mb-3 border-b border-slate-100">
                 <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-brain text-red-600"></i> Escáner Inteligente (Gemini IA)
+                    <i class="fa-solid fa-camera text-red-600"></i> Escáner de Credencial (Cámara)
                 </h3>
                 <button onclick="cerrarCamaraEnVivo()" class="text-slate-400 hover:text-slate-600 text-base">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             
-            <p class="text-xs text-slate-500 text-center mb-3">Enfoca la credencial INE y presiona capturar.</p>
+            <p class="text-xs text-slate-500 text-center mb-3">Enfoca la credencial y presiona capturar.</p>
             
             <div class="w-full relative rounded-xl overflow-hidden border-2 border-red-600 bg-black h-64 flex items-center justify-center">
                 <video id="videoEnVivo" class="w-full h-full object-cover" autoplay playsinline muted></video>
@@ -75,8 +77,8 @@
             </div>
 
             <div class="w-full mt-4 flex gap-2">
-                <button onclick="capturarYAnalizarConIA()" class="w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> Capturar y Analizar con IA
+                <button onclick="capturarYEscanearOCR()" class="w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-bolt"></i> Capturar y Extraer Datos
                 </button>
             </div>
 
@@ -117,7 +119,7 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-black tracking-tight text-white">Activismo 2027</h1>
-                    <p class="text-xs text-red-100 font-medium">Plataforma de Control con Inteligencia Artificial</p>
+                    <p class="text-xs text-red-100 font-medium">Plataforma de Control de Datos</p>
                 </div>
             </div>
             
@@ -148,27 +150,27 @@
                     <span id="currentUserBadge" class="text-xs bg-red-50 text-red-700 font-semibold px-2.5 py-1 rounded-full border border-red-100">Invitado</span>
                 </div>
 
-                <!-- BOTONES DE ESCANEO -->
+                <!-- BOTONES DE ESCANEO OCR LOCAL -->
                 <div class="mb-4 space-y-2">
                     <button type="button" onclick="abrirCamaraEnVivo()" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-3 px-4 rounded-xl shadow transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-wand-magic-sparkles text-red-400"></i> Escanear INE con IA (Cámara en Vivo)
+                        <i class="fa-solid fa-camera text-red-400"></i> Escanear Credencial (Cámara en Vivo)
                     </button>
 
                     <div class="grid grid-cols-2 gap-2">
                         <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-camera text-slate-500"></i> Cámara Nativa IA
-                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="procesarArchivoConIA(event)">
+                            <i class="fa-solid fa-camera-retro text-slate-500"></i> Cámara Nativa
+                            <input type="file" accept="image/*" capture="environment" class="hidden" onchange="procesarArchivoOCR(event)">
                         </label>
 
                         <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold py-2.5 px-3 rounded-xl border border-slate-300 transition text-center cursor-pointer flex items-center justify-center gap-1.5">
-                            <i class="fa-solid fa-image text-slate-500"></i> Subir Galería IA
-                            <input type="file" accept="image/*" class="hidden" onchange="procesarArchivoConIA(event)">
+                            <i class="fa-solid fa-image text-slate-500"></i> Subir Galería
+                            <input type="file" accept="image/*" class="hidden" onchange="procesarArchivoOCR(event)">
                         </label>
                     </div>
                 </div>
 
                 <div id="indicadorProceso" class="hidden mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-700 text-center animate-pulse">
-                    <i class="fa-solid fa-brain fa-spin mr-1"></i> Analizando credencial con IA...
+                    <i class="fa-solid fa-spinner fa-spin mr-1"></i> Leyendo texto de la credencial...
                 </div>
 
                 <form id="registroForm" class="space-y-4">
@@ -192,7 +194,7 @@
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Sección *</label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-map-pin"></i></span>
-                                <input type="text" id="seccion" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. Sección 3">
+                                <input type="text" id="seccion" required class="w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Ej. 1823">
                             </div>
                         </div>
                     </div>
@@ -418,11 +420,6 @@
         let listaGlobalRegistros = [];
         let mediaStreamVivo = null;
 
-        // API KEY PÚBLICA ESTÁNDAR FIJA (Funciona directo sin tokens OAuth)
-        const GEMINI_API_KEY = "AIzaSyAI" + "SzaT_bX0q2M1yW8v3K4p5L6m7N8" + "P9Q"; // (Clave estándar integrada)
-        // Nota: Si prefieres usar una clave de tu propia cuenta de AI Studio que comience con AIzaSy, puedes pegarla directamente aquí:
-        // const GEMINI_API_KEY = "AIzaSyTuClaveRealAqui...";
-
         window.togglePassword = function(idInput, idIcon) {
             const input = document.getElementById(idInput);
             const icon = document.getElementById(idIcon);
@@ -536,7 +533,7 @@
         });
 
         // ==========================================
-        // CÁMARA Y ESCÁNER CON IA
+        // CÁMARA Y ESCÁNER OCR LOCAL CON INTÉRPRETE ESTRICTO
         // ==========================================
         window.abrirCamaraEnVivo = async function() {
             document.getElementById('modalCamaraEnVivo').classList.remove('hidden');
@@ -549,7 +546,13 @@
                 try {
                     mediaStreamVivo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                 } catch (err) {
-                    mediaStreamVivo = await navigator.mediaDevices.getUserMedia({ video: true });
+                    try {
+                        mediaStreamVivo = await navigator.mediaDevices.getUserMedia({ video: true });
+                    } catch (permError) {
+                        mostrarToast("No se pudo acceder a la cámara.", "error");
+                        cerrarCamaraEnVivo();
+                        return;
+                    }
                 }
             }
             video.srcObject = mediaStreamVivo;
@@ -564,7 +567,7 @@
             }
         };
 
-        window.capturarYAnalizarConIA = function() {
+        window.capturarYEscanearOCR = function() {
             const video = document.getElementById('videoEnVivo');
             const canvas = document.createElement('canvas');
             canvas.width = video.videoWidth || 1280;
@@ -572,73 +575,69 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const base64Image = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+            const imagenDataUrl = canvas.toDataURL('image/jpeg', 0.9);
             cerrarCamaraEnVivo();
-            enviarImagenAGemini(base64Image);
+            interpretarINEConOCR(imagenDataUrl);
         };
 
-        window.procesarArchivoConIA = function(event) {
+        window.procesarArchivoOCR = function(event) {
             const archivo = event.target.files[0];
             if (!archivo) return;
 
             const lector = new FileReader();
             lector.onload = function(e) {
-                const base64Image = e.target.result.split(',')[1];
-                enviarImagenAGemini(base64Image);
+                interpretarINEConOCR(e.target.result);
             };
             lector.readAsDataURL(archivo);
             event.target.value = '';
         };
 
-        async function enviarImagenAGemini(base64Image) {
+        async function interpretarINEConOCR(imagenSrc) {
             const indicador = document.getElementById('indicadorProceso');
             indicador.classList.remove('hidden');
+            indicador.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Analizando credencial (OCR local)...';
 
             try {
-                const promptText = `Analiza esta imagen de una credencial INE de México y extrae estrictamente los datos en formato JSON puro (sin comillas de markdown como \`\`\`json):
-                {
-                  "nombre": "Nombre completo del ciudadano",
-                  "edad": número entero calculado a partir de la fecha de nacimiento (mínimo 18),
-                  "calle": "nombre de la calle",
-                  "numero": "número exterior o interior",
-                  "seccion": "sección electoral de 4 dígitos"
-                }`;
+                const resultado = await Tesseract.recognize(imagenSrc, 'spa');
+                const texto = resultado.data.text;
+                console.log("OCR Texto Bruto:", texto);
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inlineData: { mimeType: "image/jpeg", data: base64Image } }
-                            ]
-                        }]
-                    })
-                });
+                const lineas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 2);
 
-                const data = await response.json();
-                
-                if (data.error) {
-                    mostrarToast(`Error de IA: ${data.error.message}`, "error");
-                    return;
+                // 1. Detección de Sección (4 dígitos numéricos)
+                const matchSeccion = texto.match(/\b(1[0-9]{3}|[2-9][0-9]{3})\b/);
+                if (matchSeccion) {
+                    document.getElementById('seccion').value = matchSeccion[0];
                 }
 
-                const textoRespuesta = data.candidates[0].content.parts[0].text;
-                const jsonLimpiado = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
-                const datosINE = JSON.parse(jsonLimpiado);
+                // 2. Detección de Nombre (Filtrando palabras clave de INE)
+                const palabrasIgnoradas = ["INSTITUTO", "NACIONAL", "ELECTORAL", "CREDENCIAL", "ELECTOR", "DOMICILIO", "SEXO", "CURP", "CLAVE", "REGISTRO", "ESTADO", "MUNICIPIO", "LOCALIDAD"];
+                let posiblesNombres = lineas.filter(l => {
+                    const upper = l.toUpperCase();
+                    const esBasura = palabrasIgnoradas.some(p => upper.includes(p)) || /\d/.test(l) || l.length < 5;
+                    return !esBasura;
+                });
 
-                if (datosINE.nombre) document.getElementById('nombre').value = datosINE.nombre;
-                if (datosINE.edad) document.getElementById('edad').value = datosINE.edad;
-                if (datosINE.calle) document.getElementById('calle').value = datosINE.calle;
-                if (datosINE.numero) document.getElementById('numero').value = datosINE.numero;
-                if (datosINE.seccion) document.getElementById('seccion').value = datosINE.seccion;
+                if (posiblesNombres.length > 0) {
+                    document.getElementById('nombre').value = posiblesNombres[0].toUpperCase();
+                }
 
-                mostrarToast("¡Datos extraídos con éxito por la Inteligencia Artificial!");
-                document.getElementById('telefono').focus();
+                // 3. Detección de Calle
+                let lineaCalle = lineas.find(l => {
+                    const u = l.toUpperCase();
+                    return u.includes("CALLE") || u.includes("AV") || u.includes("AVE") || u.includes("COL") || u.includes("NUM");
+                });
+
+                if (lineaCalle) {
+                    document.getElementById('calle').value = lineaCalle;
+                }
+
+                mostrarToast("¡Datos extraídos con éxito por el escáner!");
+                document.getElementById('edad').focus();
 
             } catch (err) {
-                mostrarToast("No se pudo interpretar la INE con la IA.", "error");
+                console.error("Error OCR:", err);
+                mostrarToast("No se pudo leer con claridad. Completa los datos manualmente.", "error");
             } finally {
                 indicador.classList.add('hidden');
             }
@@ -680,16 +679,19 @@
         const form = document.getElementById('registroForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+
             const nombreIngresado = document.getElementById('nombre').value.trim();
             const edadIngresada = parseInt(document.getElementById('edad').value.trim(), 10);
+            const telefonoIngresado = document.getElementById('telefono').value.trim();
 
-            // VALIDACIÓN ESTRICTA DE DUPLICADOS EN LA NUBE
-            const nombreDuplicado = listaGlobalRegistros.some(
-                item => item.nombre.toLowerCase() === nombreIngresado.toLowerCase()
+            // VALIDACIÓN ESTRICTA DE DUPLICADOS (Nombre normalizado + Teléfono)
+            const nombreNorm = nombreIngresado.toLowerCase().replace(/\s+/g, ' ');
+            const duplicado = listaGlobalRegistros.some(
+                item => item.nombre.toLowerCase().replace(/\s+/g, ' ') === nombreNorm && item.telefono === telefonoIngresado
             );
 
-            if (nombreDuplicado) {
-                mostrarToast(`El ciudadano "${nombreIngresado}" ya se encuentra registrado.`, "error");
+            if (duplicado) {
+                mostrarToast(`El ciudadano "${nombreIngresado}" con este teléfono ya se encuentra registrado.`, "error");
                 return;
             }
 
@@ -701,7 +703,7 @@
                 cruzamientos: document.getElementById('cruzamientos').value.trim(),
                 numero: document.getElementById('numero').value.trim(),
                 seccion: document.getElementById('seccion').value.trim(),
-                telefono: document.getElementById('telefono').value.trim(),
+                telefono: telefonoIngresado,
                 facebook: document.getElementById('facebook').value.trim() || 'No proporcionado',
                 fecha: document.getElementById('fechaRegistro').value,
                 hora: document.getElementById('horaRegistro').value,
@@ -709,10 +711,15 @@
                 timestamp: serverTimestamp()
             };
 
-            form.reset();
-            actualizarTiempo();
-            mostrarToast('¡Registro guardado con éxito!');
-            await addDoc(coleccionRef, nuevoDato);
+            try {
+                await addDoc(coleccionRef, nuevoDato);
+                form.reset();
+                actualizarTiempo();
+                mostrarToast('¡Registro guardado con éxito!');
+            } catch (error) {
+                console.error("Error al guardar en Firestore:", error);
+                mostrarToast('Error al guardar en la base de datos.', 'error');
+            }
         });
 
         onSnapshot(coleccionRef, (snapshot) => {
@@ -742,13 +749,21 @@
         }
 
         window.filtrarRegistros = function() {
-            const texto = document.getElementById('buscador').value.toLowerCase();
+            const texto = document.getElementById('buscador').value.toLowerCase().trim();
             let filtrados = listaGlobalRegistros;
             if (categoriaSeleccionada !== 'Todos') filtrados = filtrados.filter(item => item.categoria === categoriaSeleccionada);
-            if (texto !== '') filtrados = filtrados.filter(item => item.nombre.toLowerCase().includes(texto) || item.calle.toLowerCase().includes(texto));
+            if (texto !== '') {
+                filtrados = filtrados.filter(item => 
+                    item.nombre.toLowerCase().includes(texto) || 
+                    item.calle.toLowerCase().includes(texto) || 
+                    item.seccion.toLowerCase().includes(texto) || 
+                    item.telefono.toLowerCase().includes(texto)
+                );
+            }
             renderizarTabla(filtrados);
         }
 
+        // RENDERIZADO SEGURO CONTRA XSS (Usando textContent)
         function renderizarTabla(datos) {
             const tbody = document.getElementById('tablaCuerpo');
             tbody.innerHTML = '';
@@ -760,36 +775,73 @@
             datos.forEach((item) => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
-                tr.innerHTML = `
-                    <td class="p-3 font-semibold text-slate-800">${item.nombre}</td>
-                    <td class="p-3 text-xs"><span class="font-bold">${item.edad}a</span> (${item.categoria})</td>
-                    <td class="p-3 text-slate-600 text-xs">${item.calle} #${item.numero}, Sec: ${item.seccion}</td>
-                    <td class="p-3 text-slate-600 text-xs">${item.telefono}</td>
-                    <td class="p-3 text-slate-500 text-xs">${item.fecha}</td>
-                    <td class="p-3 text-center"><button onclick="eliminarRegistro('${item.id}')" class="text-rose-600"><i class="fa-solid fa-trash-can"></i></button></td>
-                `;
+
+                const tdNombre = document.createElement('td');
+                tdNombre.className = "p-3 font-semibold text-slate-800";
+                tdNombre.textContent = item.nombre;
+
+                const tdEdad = document.createElement('td');
+                tdEdad.className = "p-3 text-xs";
+                tdEdad.textContent = `${item.edad}a (${item.categoria})`;
+
+                const tdDir = document.createElement('td');
+                tdDir.className = "p-3 text-slate-600 text-xs";
+                tdDir.textContent = `${item.calle} #${item.numero}, Sec: ${item.seccion}`;
+
+                const tdTel = document.createElement('td');
+                tdTel.className = "p-3 text-slate-600 text-xs";
+                tdTel.textContent = item.telefono;
+
+                const tdFecha = document.createElement('td');
+                tdFecha.className = "p-3 text-slate-500 text-xs";
+                tdFecha.textContent = item.fecha;
+
+                const tdAccion = document.createElement('td');
+                tdAccion.className = "p-3 text-center";
+                const btnEliminar = document.createElement('button');
+                btnEliminar.className = "text-rose-600 hover:text-rose-800 transition";
+                btnEliminar.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                btnEliminar.onclick = () => eliminarRegistro(item.id);
+                tdAccion.appendChild(btnEliminar);
+
+                tr.append(tdNombre, tdEdad, tdDir, tdTel, tdFecha, tdAccion);
                 tbody.appendChild(tr);
             });
             document.getElementById('totalRegistros').textContent = `Total: ${datos.length}`;
         }
 
         window.eliminarRegistro = async function(id) {
-            if(confirm('¿Eliminar registro?')) await deleteDoc(doc(db, "registros", id));
+            if(confirm('¿Deseas eliminar este registro?')) {
+                try {
+                    await deleteDoc(doc(db, "registros", id));
+                    mostrarToast('Registro eliminado correctamente');
+                } catch (e) {
+                    mostrarToast('No se pudo eliminar el registro', 'error');
+                }
+            }
         }
 
+        // EXPORTACIÓN COMPLETA A EXCEL
         window.exportarExcelConEstilosProfesionales = function() {
-            let aoa = [["Nombre", "Edad", "Categoría", "Calle", "Teléfono", "Fecha"]];
-            listaGlobalRegistros.forEach(i => aoa.push([i.nombre, i.edad, i.categoria, i.calle, i.telefono, i.fecha]));
+            let aoa = [["Nombre", "Edad", "Categoría", "Calle", "Cruzamientos", "Número", "Sección", "Teléfono", "Facebook", "Fecha", "Hora", "Registrado Por"]];
+            listaGlobalRegistros.forEach(i => aoa.push([
+                i.nombre, i.edad, i.categoria, i.calle, i.cruzamientos, i.numero, i.seccion, i.telefono, i.facebook, i.fecha, i.hora, i.registradoPor
+            ]));
             const ws = XLSX.utils.aoa_to_sheet(aoa);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Reporte");
-            XLSX.writeFile(wb, "Activismo_2027.xlsx");
+            XLSX.utils.book_append_sheet(wb, ws, "Reporte Completo");
+            XLSX.writeFile(wb, "Activismo_2027_Completo.xlsx");
         }
 
+        // EXPORTACIÓN ACCESS / CSV CON SOPORTE UTF-8 (BOM)
         window.exportarAccessCSV = function() {
-            let csv = "Nombre,Edad,Categoría,Calle,Teléfono,Fecha\r\n" + listaGlobalRegistros.map(i => `"${i.nombre}",${i.edad},"${i.categoria}","${i.calle}","${i.telefono}","${i.fecha}"`).join("\r\n");
+            let csv = "Nombre,Edad,Categoría,Calle,Cruzamientos,Número,Sección,Teléfono,Facebook,Fecha,Hora,RegistradoPor\r\n" + 
+                listaGlobalRegistros.map(i => `"${i.nombre}",${i.edad},"${i.categoria}","${i.calle}","${i.cruzamientos}","${i.numero}","${i.seccion}","${i.telefono}","${i.facebook}","${i.fecha}","${i.hora}","${i.registradoPor}"`).join("\r\n");
+            
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+            link.href = url;
             link.download = "Activismo_2027.csv";
             link.click();
         }
