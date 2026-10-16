@@ -13,3 +13,7 @@ NOTAS
 - Deben permanecer juntos index.html, manifest.json, service-worker.js e icons/.
 - La app necesita internet para Firebase y para algunas bibliotecas externas. El caché conserva la estructura básica, no garantiza que el sistema completo funcione sin conexión.
 - Este paquete conserva la configuración Firebase que ya estaba en el HTML original. Revisa las reglas y permisos de Firebase antes de publicar; no compartas credenciales administrativas.
+
+ICONO
+- Se añadieron iconos PNG de 192x192 y 512x512 para mejorar la compatibilidad del icono instalado en Android/iOS.
+- Tras subir los archivos, si el teléfono conserva el icono anterior, elimina el acceso directo viejo y vuelve a añadir la app desde el navegador.
