@@ -180,6 +180,14 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Clave de Elector</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-id-card"></i></span>
+                            <input type="text" id="claveElector" maxlength="18" autocomplete="off" autocapitalize="characters" class="campo-ine w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="18 caracteres">
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div class="sm:col-span-1">
                             <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Edad *</label>
@@ -345,7 +353,7 @@
 
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400"><i class="fa-solid fa-search"></i></span>
-                    <input type="text" id="buscador" oninput="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Buscar por nombre, calle, sección o teléfono...">
+                    <input type="text" id="buscador" oninput="filtrarRegistros()" class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white transition" placeholder="Buscar por nombre, clave, calle, sección o teléfono...">
                 </div>
             </div>
 
@@ -508,8 +516,12 @@
   function lineaEtiqueta(linea) {
     var tokens = linea.split(' ');
     for (var i = 0; i < ETIQUETAS.length; i++) {
-      var n = coincideEtiqueta(tokens, ETIQUETAS[i]);
-      if (n > 0) return { k: ETIQUETAS[i].k, resto: tokens.slice(n).join(' ') };
+      // Etiquetas largas: se tolera hasta 2 fragmentos de ruido (restos de la foto) antes de ellas.
+      var maxOff = ETIQUETAS[i].claves[0].length >= 6 ? 2 : 0;
+      for (var off = 0; off <= maxOff && off < tokens.length; off++) {
+        var n = coincideEtiqueta(tokens.slice(off), ETIQUETAS[i]);
+        if (n > 0) return { k: ETIQUETAS[i].k, resto: tokens.slice(off + n).join(' ') };
+      }
     }
     return null;
   }
@@ -533,6 +545,7 @@
     return String(s).toLocaleLowerCase('es-MX').split(' ').map(function (w, i) {
       if (!w) return w;
       if (i > 0 && PARTICULAS.indexOf(w) >= 0) return w;
+      if (/[0-9]/.test(w)) return w.toLocaleUpperCase('es-MX');
       return w.charAt(0).toLocaleUpperCase('es-MX') + w.slice(1);
     }).join(' ');
   }
@@ -563,8 +576,20 @@
     var pal = l.replace(/[.'\-]/g, ' ').split(' ').filter(function (p) { return p.length > 1 || p === 'Y'; });
     if (!pal.length || pal.length > 5) return null;
     for (var i = 0; i < pal.length; i++) if (RUIDO.indexOf(pal[i]) >= 0) return null;
-    if (pal.join('').length < 3) return null;
+    if (pal.join('').length < 2) return null;   // apellidos de 2 letras (Ti, Ek, Uc, Ku...) son válidos
     return pal.join(' ');
+  }
+
+  function limpiarNombreOCR(nombre) {
+    // En algunas fotos el OCR incorpora "AS" u otro fragmento suelto al final
+    // del nombre. No se elimina si el nombre tiene cuatro palabras o menos.
+    var palabras = String(nombre || '').trim().split(/\s+/).filter(Boolean);
+    if (palabras.length >= 5 && /^(AS|A5|A8)$/i.test(palabras[palabras.length - 1])) {
+      palabras.pop();
+    }
+    // Un nombre de INE puede tener varios apellidos; limitar solo el fragmento
+    // espurio detectado, sin truncar nombres legítimos.
+    return palabras.join(' ');
   }
 
   function leerNombre(bloque) {
@@ -584,6 +609,7 @@
       nombre = v[0];
       estado = 'revisar';
     }
+    nombre = limpiarNombreOCR(nombre);
     if (estado === 'revisar') nota = 'Verifica el nombre completo y su orden.';
     return { valor: nombre ? titulo(nombre) : '', estado: estado, nota: nota };
   }
@@ -595,18 +621,27 @@
     return tok;
   }
 
+  function esNumeroCasa(tok) { return /^(\d+[A-Z]?(-\d+[A-Z]?)?|S\/N|SN)$/.test(tok); }
+
   function leerDomicilio(linea) {
     var tokens = linea.split(' ');
     var tipo = PREFIJOS[tokens[0].replace(/[.,]/g, '')];
     if (!tipo) return null;
     var resto = tokens.slice(1).join(' ');
 
-    var cruz = '';
-    var mc = resto.match(/(?:^|\s)X\s+(.+?)\s+Y\s+(.+)$/);
+    // Cruzamientos: "X a Y b", "ENTRE a Y b" o "POR a Y b".
+    var cruz = '', numeroFinal = '';
+    var mc = resto.match(/(?:^|\s)(?:ENTRE|ENTRA|X|POR|CRUZ(?:AMIENTOS)?)\.?\s+(.+?)\s+Y\s+(.+)$/);
     if (mc) {
-      var segunda = mc[2].split(/\s+(?:COL|COLONIA|FRACC|FRACCIONAMIENTO|CP|C\.P\.)(?:\s|$)/)[0];
+      var segunda = mc[2].split(/\s+(?:COL|COLONIA|FRACC|FRACCIONAMIENTO|CP|C\.P\.)(?:\s|$)/)[0].trim();
+      var st = segunda.split(' ').map(corregirNumero);
+      // "69 A 455": el número de la casa quedó pegado al final de la segunda calle.
+      if (st.length >= 2 && /^\d+$/.test(st[st.length - 1]) &&
+          (/^[A-Z]$/.test(st[st.length - 2]) || /^\d+$/.test(st[st.length - 2]))) {
+        numeroFinal = st.pop();
+      }
       var fixCruz = function (s) { return titulo(s.split(' ').map(corregirNumero).join(' ')); };
-      cruz = fixCruz(mc[1]) + ' y ' + fixCruz(segunda);
+      cruz = fixCruz(mc[1]) + ' y ' + fixCruz(st.join(' '));
       resto = resto.slice(0, mc.index).trim();
     }
 
@@ -619,9 +654,10 @@
 
     var t = resto.split(' ').filter(Boolean).map(corregirNumero);
     var numero = '';
-    if (t.length >= 2 && /^(\d+[A-Z]?(-\d+[A-Z]?)?|S\/N|SN)$/.test(t[t.length - 1])) numero = t.pop();
+    if (t.length >= 2 && esNumeroCasa(t[t.length - 1])) numero = t.pop();
     var nombreCalle = t.join(' ');
     if (!nombreCalle) return null;
+    if (!numero && numeroFinal) numero = numeroFinal;
     if (numero === 'SN') numero = 'S/N';
     if (interior) numero = (numero ? numero + ' ' : '') + 'Int ' + interior;
     return { calle: tipo + ' ' + titulo(nombreCalle), numero: numero, cruzamientos: cruz };
@@ -693,7 +729,7 @@
           if (a && /[HM]/.test(a.charAt(14))) {
             var yy2 = +a.substr(6, 2), m2 = +a.substr(8, 2), d2 = +a.substr(10, 2);
             var y2 = resolverSiglo(yy2, m2, d2, hoy);
-            if (y2) res.clave = { y: y2, m: m2, d: d2 };
+            if (y2) res.clave = { y: y2, m: m2, d: d2, texto: a };
           }
         }
       }
@@ -768,14 +804,60 @@
 
   // ---------- sección ----------
 
+  function numeroSeccion(tok) {
+    var crudo = String(tok || '').replace(/[^A-Z0-9Ñ]/g, '');
+    if (!/^[0-9OQDIL]{3,4}$/.test(crudo)) return '';
+    if ((crudo.match(/[0-9]/g) || []).length < 2) return '';
+    return digitos(crudo);
+  }
+
   function leerSeccion(plano) {
-    var m = plano.match(/SECCI[O0]N\s*[:.]?\s*([0-9OQDIL]{3,4})(?![0-9A-Z])/);
-    if (!m) return { valor: '', estado: 'vacio', nota: '' };
-    var crudo = m[1];
-    if ((crudo.match(/[0-9]/g) || []).length < 2) return { valor: '', estado: 'vacio', nota: '' };
-    var d = digitos(crudo);
-    if (d.length === 3) return { valor: '0' + d, estado: 'revisar', nota: 'Solo se leyeron 3 dígitos. Verifica la sección.' };
-    return { valor: d, estado: 'ok', nota: '' };
+    var tokens = plano.split(' ').filter(Boolean), i, j, d, combinado;
+    // 1) Etiqueta SECCIÓN (tolera errores OCR) seguida del número.
+    // Algunos OCR separan el número en dos tokens (p. ej. "01 23"); se prueban
+    // ambos tokens juntos, sin aceptar cadenas de más de cuatro caracteres.
+    for (i = 0; i < tokens.length; i++) {
+      if (!casiIgual(tokens[i].replace(/[^A-ZÑ]/g, ''), 'SECCION') &&
+          !/^SEC[C G]{0,2}ION$/.test(tokens[i].replace(/[^A-ZÑ]/g, ''))) continue;
+      for (j = i + 1; j <= i + 2 && j < tokens.length; j++) {
+        d = numeroSeccion(tokens[j]);
+        if (!d && j + 1 < tokens.length) {
+          combinado = String(tokens[j] || '') + String(tokens[j + 1] || '');
+          d = numeroSeccion(combinado);
+        }
+        if (d) {
+          if (d.length === 3) return { valor: '0' + d, estado: 'revisar', nota: 'Solo se leyeron 3 dígitos. Verifica la sección.' };
+          return { valor: d, estado: 'revisar', nota: 'Confirma que los cuatro dígitos de la sección coincidan con la credencial.' };
+        }
+      }
+    }
+    // 1b) Etiqueta y número pegados ("SECCION0123").
+    var mg = plano.match(/SEC[CG][A-Z0-9]{0,3}\s*[:.]?\s*([0-9OQDIL]{4})(?![0-9A-Z])/);
+    if (mg) {
+      d = numeroSeccion(mg[1]);
+      if (d.length === 4) return { valor: d, estado: 'ok', nota: '' };
+    }
+    // 2) El número de 4 dígitos que va justo antes de LOCALIDAD.
+    for (i = 1; i < tokens.length; i++) {
+      if (casiIgual(tokens[i], 'LOCALIDAD')) {
+        d = numeroSeccion(tokens[i - 1]);
+        if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número junto a LOCALIDAD. Verifícala.' };
+      }
+    }
+    // 2b) Número pegado a LOCALIDAD ("1234LOCALIDAD").
+    var ml = plano.match(/([0-9OQDIL]{4})\s*LOCALI[A-Z0-9]{0,4}/);
+    if (ml) {
+      d = numeroSeccion(ml[1]);
+      if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número junto a LOCALIDAD. Verifícala.' };
+    }
+    // 3) El número de 4 dígitos que sigue a MUNICIPIO + su clave.
+    for (i = 0; i + 2 < tokens.length; i++) {
+      if (casiIgual(tokens[i], 'MUNICIPIO') && /^[0-9OQDIL]{1,3}$/.test(tokens[i + 1])) {
+        d = numeroSeccion(tokens[i + 2]);
+        if (d.length === 4) return { valor: d, estado: 'revisar', nota: 'La etiqueta no se leyó; se tomó el número después del municipio. Verifícala.' };
+      }
+    }
+    return { valor: '', estado: 'vacio', nota: '' };
   }
 
   // ---------- interpretación completa ----------
@@ -789,11 +871,29 @@
     var plano = lineas.join(' ');
     var avisos = [];
     var campos = {
-      nombre: vacio(), edad: vacio(), calle: vacio(), numero: vacio(), cruzamientos: vacio(), seccion: vacio()
+      nombre: vacio(), edad: vacio(), calle: vacio(), numero: vacio(), cruzamientos: vacio(), seccion: vacio(),
+      claveElector: vacio()
     };
 
     var iN = indiceEtiqueta(etiquetas, 'nombre');
     if (iN >= 0) campos.nombre = leerNombre(bloqueDesde(lineas, etiquetas, iN));
+
+    // Respaldo: si no se leyó la etiqueta NOMBRE, se toman las líneas de nombre justo antes de DOMICILIO.
+    if (campos.nombre.estado === 'vacio') {
+      var iDom = indiceEtiqueta(etiquetas, 'domicilio');
+      if (iDom > 0) {
+        var previas = [];
+        for (var q = iDom - 1; q >= 0 && previas.length < 3; q--) {
+          if (etiquetas[q] && etiquetas[q].k !== 'nombre') break;
+          var vq = esLineaNombre(lineas[q]);
+          if (vq) previas.unshift(vq);
+        }
+        if (previas.length >= 2) {
+          var nom = previas.length >= 3 ? previas[2] + ' ' + previas[0] + ' ' + previas[1] : previas[1] + ' ' + previas[0];
+          campos.nombre = { valor: titulo(limpiarNombreOCR(nom)), estado: 'revisar', nota: 'No se leyó la etiqueta NOMBRE; se tomaron las líneas anteriores al domicilio. Verifica el nombre y su orden.' };
+        }
+      }
+    }
 
     var iD = indiceEtiqueta(etiquetas, 'domicilio');
     if (iD >= 0) {
@@ -814,6 +914,19 @@
     ed.avisos.forEach(function (a) { avisos.push(a); });
 
     campos.seccion = leerSeccion(plano);
+
+    // Clave de elector: se acepta solo si su estructura y su fecha son válidas.
+    var cods = buscarCodigos(lineas, hoy);
+    if (cods.clave) {
+      var fEt = leerFechaEtiqueta(plano, hoy);
+      var mismaFecha = function (x, y) { return !!(x && y && x.y === y.y && x.m === y.m && x.d === y.d); };
+      var corrobora = mismaFecha(cods.clave, cods.curp) || mismaFecha(cods.clave, fEt);
+      campos.claveElector = {
+        valor: cods.clave.texto,
+        estado: corrobora ? 'ok' : 'revisar',
+        nota: corrobora ? '' : 'Verifica la clave de elector (18 caracteres).'
+      };
+    }
 
     var nEt = etiquetas.filter(Boolean).length;
     var llenos = Object.keys(campos).filter(function (k) { return campos[k].estado !== 'vacio'; }).length;
@@ -846,7 +959,7 @@
     return {
       campos: campos,
       avisos: avisos,
-      lineas: a.lineas.length >= b.lineas.length ? a.lineas : b.lineas,
+      lineas: a.lineas.concat(['--- otra lectura ---'], b.lineas),
       puntaje: Math.max(a.puntaje, b.puntaje)
     };
   }
@@ -1084,7 +1197,7 @@
         // ==========================================
         // LECTURA DE LA INE EN EL TELÉFONO (OCR local)
         // ==========================================
-        const CAMPOS_INE = ['nombre', 'edad', 'calle', 'numero', 'cruzamientos', 'seccion'];
+        const CAMPOS_INE = ['nombre', 'claveElector', 'edad', 'calle', 'numero', 'cruzamientos', 'seccion'];
 
         function marcarCampo(id, estado) {
             const el = $(id);
@@ -1127,14 +1240,16 @@
         }
 
         // Gris + estiramiento de contraste (y, opcionalmente, blanco y negro por Otsu).
-        function prepararLienzo(img, binarizar) {
+        // desdeX: fracción izquierda que se recorta (0.3 = se ignora el 30 % izquierdo, donde va la foto).
+        function prepararLienzo(img, binarizar, desdeX) {
             const w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
-            const escala = Math.min(2000 / Math.max(w0, h0), 2.5);
-            const w = Math.round(w0 * escala), h = Math.round(h0 * escala);
+            const sx = Math.round(w0 * (desdeX || 0)), sw = w0 - sx;
+            const escala = Math.min(2000 / Math.max(sw, h0), 2.5);
+            const w = Math.round(sw * escala), h = Math.round(h0 * escala);
             const c = document.createElement('canvas');
             c.width = w; c.height = h;
             const ctx = c.getContext('2d', { willReadFrequently: true });
-            ctx.drawImage(img, 0, 0, w, h);
+            ctx.drawImage(img, sx, 0, sw, h0, 0, 0, w, h);
             const data = ctx.getImageData(0, 0, w, h);
             const px = data.data, n = w * h, gris = new Uint8Array(n), hist = new Array(256).fill(0);
             for (let i = 0, j = 0; i < n; i++, j += 4) {
@@ -1183,13 +1298,13 @@
                 $(k).value = c.estado === 'vacio' ? '' : c.valor;
                 marcarCampo(k, c.estado);
             });
-            const nombres = { nombre: 'Nombre', edad: 'Edad', calle: 'Calle', numero: 'Número', cruzamientos: 'Cruzamientos', seccion: 'Sección' };
+            const nombres = { nombre: 'Nombre', claveElector: 'Clave de elector', edad: 'Edad', calle: 'Calle', numero: 'Número', cruzamientos: 'Cruzamientos', seccion: 'Sección' };
             const ok = [], revisar = [], faltan = [], notas = [];
             CAMPOS_INE.forEach((k) => {
                 const c = r.campos[k];
                 if (c.estado === 'ok') ok.push(nombres[k]);
                 else if (c.estado === 'revisar') { revisar.push(nombres[k]); if (c.nota) notas.push(nombres[k] + ': ' + c.nota); }
-                else { if (k !== 'cruzamientos') faltan.push(nombres[k]); else faltan.push('Cruzamientos'); if (c.nota) notas.push(nombres[k] + ': ' + c.nota); }
+                else { faltan.push(nombres[k]); if (c.nota) notas.push(nombres[k] + ': ' + c.nota); }
             });
             r.avisos.forEach((a) => notas.push(a));
             const caja = $('resultadoLectura');
@@ -1201,8 +1316,27 @@
             if (faltan.length) html += '<p class="mt-1"><b>No se pudo leer, captúralo:</b> ' + esc(faltan.join(', ')) + '</p>';
             if (notas.length) html += '<ul class="mt-1 list-disc pl-4">' + notas.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>';
             html += '<p class="mt-1 text-slate-500">Si algo se ve mal, corrígelo a mano o vuelve a tomar la foto con más luz. Teléfono y cruzamientos (si no aparecen) se capturan a mano.</p>';
+            html += '<details class="mt-2"><summary class="cursor-pointer font-semibold text-slate-600">Ver texto leído (diagnóstico)</summary>' +
+                '<pre class="mt-1 whitespace-pre-wrap break-words text-[10px] leading-tight text-slate-600">' +
+                esc(r.lineas.map(INEParser.enmascarar).join('\n')) + '</pre></details>';
             caja.innerHTML = html;
             caja.classList.remove('hidden');
+        }
+
+        // Crea una versión rotada sin modificar el archivo original. Se usa para fotos
+        // tomadas con el teléfono girado; el OCR compara los resultados y no presupone
+        // que la foto completa sea vertical u horizontal.
+        async function rotarImagenSiHaceFalta(img, grados) {
+            if (!grados) return img;
+            const c = document.createElement('canvas');
+            const w = img.width || img.naturalWidth, h = img.height || img.naturalHeight;
+            c.width = (grados % 180) ? h : w;
+            c.height = (grados % 180) ? w : h;
+            const ctx = c.getContext('2d');
+            ctx.translate(c.width / 2, c.height / 2);
+            ctx.rotate(grados * Math.PI / 180);
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            return c;
         }
 
         async function leerINE(origen) {
@@ -1213,15 +1347,84 @@
             let img = null, lienzo = null;
             try {
                 img = await cargarImagen(origen);
-                lienzo = prepararLienzo(img, false);
-                progreso('Leyendo credencial...', 30);
-                let resultado = INEParser.interpretar(await leerTexto(lienzo, 6));
+                // Se prueban varias lecturas hasta tener nombre, edad, calle y sección.
+                const pasadas = [
+                    { txt: 'Leyendo credencial...', bin: false, x: 0, psm: 6 },
+                    { txt: 'Leyendo solo la zona de texto...', bin: false, x: 0.3, psm: 6 },
+                    { txt: 'Mejorando la lectura...', bin: true, x: 0, psm: 11 },
+                    { txt: 'Último intento de lectura...', bin: true, x: 0.3, psm: 6 }
+                ];
+                let resultado = null;
+                for (let i = 0; i < pasadas.length; i++) {
+                    const ps = pasadas[i];
+                    progreso(ps.txt, 15 + i * 20);
+                    if (lienzo) { lienzo.width = 0; lienzo.height = 0; }
+                    lienzo = prepararLienzo(img, ps.bin, ps.x);
+                    const lectura = INEParser.interpretar(await leerTexto(lienzo, ps.psm));
+                    resultado = INEParser.fusionar(resultado, lectura);
+                    if (INEParser.esSuficiente(resultado)) break;
+                }
 
-                if (!INEParser.esSuficiente(resultado)) {
-                    progreso('Mejorando la lectura...', 60);
-                    lienzo.width = 0; lienzo.height = 0;
-                    lienzo = prepararLienzo(img, true);
-                    resultado = INEParser.fusionar(resultado, INEParser.interpretar(await leerTexto(lienzo, 11)));
+                // Si la sección sigue sin leerse, intenta también las rotaciones de 90°
+                // y 270°. Solo reemplaza el valor si el OCR encuentra cuatro dígitos.
+                if (!resultado.campos.seccion || resultado.campos.seccion.estado === 'vacio') {
+                    for (const grados of [90, 270]) {
+                        let rotada = null;
+                        try {
+                            rotada = await rotarImagenSiHaceFalta(img, grados);
+                            const lienzoRotado = prepararLienzo(rotada, false, 0);
+                            const lecturaRotada = INEParser.interpretar(await leerTexto(lienzoRotado, 11));
+                            resultado = INEParser.fusionar(resultado, lecturaRotada);
+                            lienzoRotado.width = 0; lienzoRotado.height = 0;
+                            if (resultado.campos.seccion && resultado.campos.seccion.estado !== 'vacio') break;
+                        } catch (e) {
+                            console.warn('No se pudo probar la rotación ' + grados + '°:', e);
+                        } finally {
+                            if (rotada && rotada !== img && rotada.close) rotada.close();
+                        }
+                    }
+                }
+
+                // Segundo intento dedicado a la sección: recorta la franja inferior
+                // derecha de la imagen, donde suele aparecer la etiqueta SECCIÓN.
+                // Se acepta solo un número de 4 dígitos y siempre se pide confirmación.
+                try {
+                    const w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
+                    const zona = document.createElement('canvas');
+                    // Recorte estrecho alrededor del campo SECCIÓN para reducir falsos positivos.
+                    // La credencial puede ocupar solo parte de una foto vertical. Ampliamos
+                    // el área de búsqueda para no depender de un encuadre exacto.
+                    const sx = Math.round(w0 * (h0 > w0 ? 0.42 : 0.50));
+                    const sy = Math.round(h0 * (h0 > w0 ? 0.58 : 0.62));
+                    const sw = Math.max(1, Math.round(w0 * (h0 > w0 ? 0.48 : 0.42)));
+                    const sh = Math.max(1, Math.round(h0 * (h0 > w0 ? 0.18 : 0.20)));
+                    zona.width = sw * 3; zona.height = sh * 3;
+                    const zctx = zona.getContext('2d', { willReadFrequently: true });
+                    zctx.imageSmoothingEnabled = false;
+                    zctx.filter = 'contrast(1.8) grayscale(1)';
+                    zctx.drawImage(img, sx, sy, sw, sh, 0, 0, zona.width, zona.height);
+                    zctx.filter = 'none';
+                    const seccionTxt = await leerTexto(zona, 6);
+                    const normalizado = String(seccionTxt || '').toUpperCase();
+                    const convertir = t => String(t || '').replace(/[^0-9OQDIL]/g, '')
+                        .replace(/[OQD]/g, '0').replace(/[IL]/g, '1');
+                    const etiqueta = normalizado.match(/SEC[CÇ]?I[ÓO]?N[^0-9]{0,12}([0-9OQDIL ]{4,8})/);
+                    let seccionLeida = etiqueta ? convertir(etiqueta[1]) : '';
+                    if (!/^\d{4}$/.test(seccionLeida)) {
+                        const candidatos = (normalizado.match(/[0-9OQDIL](?:[0-9OQDIL ]{1,6}[0-9OQDIL])/g) || [])
+                            .map(convertir).filter(v => /^\d{4}$/.test(v));
+                        seccionLeida = candidatos[0] || '';
+                    }
+                    if (seccionLeida) {
+                        resultado.campos.seccion = {
+                            valor: seccionLeida,
+                            estado: 'revisar',
+                            nota: 'Lectura enfocada de la zona SECCIÓN. Confirma los cuatro dígitos con la credencial; el OCR puede confundirse.'
+                        };
+                    }
+                    zona.width = 0; zona.height = 0;
+                } catch (e) {
+                    console.warn('No se pudo hacer la lectura enfocada de sección:', e);
                 }
 
                 aplicarResultado(resultado);
@@ -1244,7 +1447,8 @@
         window.procesarArchivo = function (event) {
             const archivo = event.target.files && event.target.files[0];
             event.target.value = '';
-            if (archivo) leerINE(archivo);
+            if (!archivo) return;
+            leerINE(archivo);
         };
 
         window.abrirCamaraEnVivo = async function () {
@@ -1327,6 +1531,7 @@
         function valoresFormulario() {
             return {
                 nombre: $('nombre').value.trim(),
+                claveElector: $('claveElector').value.trim().toUpperCase().replace(/\s+/g, ''),
                 edad: $('edad').value.trim(),
                 calle: $('calle').value.trim(),
                 cruzamientos: $('cruzamientos').value.trim(),
@@ -1350,12 +1555,22 @@
             const tel = v.telefono.replace(/\D/g, '');
             if (tel.length !== 10) { mostrarToast('El teléfono debe tener 10 dígitos.', 'error'); return; }
 
+            if (v.claveElector && v.claveElector.length !== 18) { mostrarToast('La clave de elector debe tener 18 caracteres (o déjala vacía).', 'error'); return; }
+
+            // Duplicados: se bloquean (por clave de elector o por nombre), como en la versión original.
             const nombreNorm = normalizarNombre(v.nombre);
-            const repetido = listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === nombreNorm);
-            if (repetido && !confirm('Ya existe un registro con el nombre "' + v.nombre + '". ¿Guardar de todos modos?')) return;
+            if (v.claveElector) {
+                const mismaClave = listaGlobalRegistros.find((r) => r.claveElector === v.claveElector);
+                if (mismaClave) { mostrarToast('Esa clave de elector ya está registrada a nombre de "' + mismaClave.nombre + '".', 'error'); return; }
+            }
+            if (listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === nombreNorm)) {
+                mostrarToast('El ciudadano "' + v.nombre + '" ya se encuentra registrado.', 'error');
+                return;
+            }
 
             const nuevoDato = {
                 nombre: v.nombre,
+                claveElector: v.claveElector,
                 edad: edad,
                 categoria: obtenerCategoriaEdad(edad),
                 calle: v.calle,
@@ -1421,7 +1636,7 @@
             let filtrados = listaGlobalRegistros;
             if (categoriaSeleccionada !== 'Todos') filtrados = filtrados.filter((i) => i.categoria === categoriaSeleccionada);
             if (texto) {
-                filtrados = filtrados.filter((i) => [i.nombre, i.calle, i.seccion, i.telefono, i.cruzamientos]
+                filtrados = filtrados.filter((i) => [i.nombre, i.calle, i.seccion, i.telefono, i.cruzamientos, i.claveElector]
                     .some((c) => normalizarNombre(c).includes(texto)));
             }
             renderizarTabla(filtrados);
@@ -1470,7 +1685,7 @@
         // EXPORTACIÓN (solo Admin): todas las columnas
         // ==========================================
         const COLUMNAS = [
-            ['Nombre', 'nombre'], ['Edad', 'edad'], ['Categoría', 'categoria'], ['Sección', 'seccion'],
+            ['Nombre', 'nombre'], ['Clave de elector', 'claveElector'], ['Edad', 'edad'], ['Categoría', 'categoria'], ['Sección', 'seccion'],
             ['Calle', 'calle'], ['Número', 'numero'], ['Cruzamientos', 'cruzamientos'], ['Teléfono', 'telefono'],
             ['Facebook', 'facebook'], ['Fecha', 'fecha'], ['Hora', 'hora'], ['Registrado por', 'registradoPor']
         ];
@@ -1486,7 +1701,7 @@
             const filas = [COLUMNAS.map((c) => c[0])];
             listaGlobalRegistros.forEach((r) => filas.push(COLUMNAS.map((c) => (c[1] === 'edad' ? r[c[1]] : seguro(r[c[1]])))));
             const ws = XLSX.utils.aoa_to_sheet(filas);
-            ws['!cols'] = COLUMNAS.map((c, i) => ({ wch: i === 0 ? 30 : i === 4 || i === 6 ? 24 : 14 }));
+            ws['!cols'] = COLUMNAS.map((c) => ({ wch: c[1] === 'nombre' ? 30 : c[1] === 'claveElector' ? 22 : c[1] === 'calle' || c[1] === 'cruzamientos' ? 24 : 14 }));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'Reporte');
             XLSX.writeFile(wb, 'Activismo_2027.xlsx');
