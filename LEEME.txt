@@ -1,19 +1,9 @@
-ACTIVISMO 2027 - PUBLICAR EN GITHUB PAGES
+ACTIVISMO 2027 - ARCHIVOS PARA GITHUB PAGES
 
-1. Entra al repositorio de GitHub donde ya publicas la página.
-2. Pulsa Add file > Upload files.
-3. Sube index.html, manifest.json, service-worker.js y la carpeta icons completa.
-   Si GitHub pregunta por reemplazar index.html, confirma solo si deseas actualizar la versión publicada.
-4. Pulsa Commit changes. Espera a que GitHub Pages termine de publicar.
-5. Abre la URL HTTPS de GitHub Pages desde el teléfono.
-   Android/Chrome: menú ⋮ > Instalar app o Añadir a pantalla de inicio.
-   iPhone/Safari: Compartir > Añadir a pantalla de inicio.
+Sube TODOS los archivos de este paquete al nivel principal (raiz) de tu repositorio. Ya no necesitas subir la carpeta icons: los iconos estan junto a index.html.
 
-NOTAS
-- Deben permanecer juntos index.html, manifest.json, service-worker.js e icons/.
-- La app necesita internet para Firebase y para algunas bibliotecas externas. El caché conserva la estructura básica, no garantiza que el sistema completo funcione sin conexión.
-- Este paquete conserva la configuración Firebase que ya estaba en el HTML original. Revisa las reglas y permisos de Firebase antes de publicar; no compartas credenciales administrativas.
+Archivos principales: index.html, manifest.json, service-worker.js, icon-192.png, icon-512.png, icon.svg.
 
-ICONO
-- Se añadieron iconos PNG de 192x192 y 512x512 para mejorar la compatibilidad del icono instalado en Android/iOS.
-- Tras subir los archivos, si el teléfono conserva el icono anterior, elimina el acceso directo viejo y vuelve a añadir la app desde el navegador.
+En GitHub: abre el repositorio > Add file > Upload files. Arrastra los archivos de esta carpeta (no el ZIP) y pulsa Commit changes. Si ya existe index.html, acepta reemplazarlo solo si quieres actualizar la pagina.
+
+Luego espera GitHub Pages y abre la pagina por HTTPS. Si ya habias instalado la app, elimina el acceso directo anterior y vuelve a agregarlo para refrescar el icono.
