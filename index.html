@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Activismo 2027</title>
+    <meta name="theme-color" content="#b91c1c">
+    <meta name="description" content="Plataforma de registro Activismo 2027">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <!-- OCR que corre dentro del teléfono: la foto de la INE no sale del dispositivo -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
 </head>
@@ -109,6 +114,7 @@
 
     <!-- HEADER -->
     <header class="bg-red-700 text-white shadow-lg border-b-4 border-red-800">
+        <div class="max-w-7xl mx-auto px-4 pt-2 flex justify-end"><button id="installAppBtn" class="hidden text-xs font-bold bg-white text-red-700 rounded-lg px-3 py-2" type="button">Instalar app</button></div>
         <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3">
                 <div class="bg-white p-1 rounded-xl shadow-md flex items-center justify-center">
@@ -267,6 +273,7 @@
                     <button type="submit" id="btnGuardar" class="w-full mt-2 bg-red-700 hover:bg-red-800 active:bg-red-900 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-cloud-arrow-up"></i> Guardar Registro
                     </button>
+                    <button type="button" id="btnCancelarEdicion" onclick="cancelarEdicionRegistro()" class="hidden w-full mt-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-semibold py-3 rounded-xl"><i class="fa-solid fa-xmark mr-1"></i> Cancelar edición</button>
                 </form>
             </div>
 
@@ -331,6 +338,9 @@
                     </button>
                     <button onclick="exportarCSV()" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
                         <i class="fa-solid fa-file-csv"></i> Access (CSV)
+                    </button>
+                    <button onclick="exportarPDF()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold py-2 px-3 rounded-xl shadow transition flex items-center gap-1.5 whitespace-nowrap">
+                        <i class="fa-solid fa-file-pdf"></i> Informe PDF
                     </button>
                 </div>
             </div>
@@ -580,18 +590,6 @@
     return pal.join(' ');
   }
 
-  function limpiarNombreOCR(nombre) {
-    // En algunas fotos el OCR incorpora "AS" u otro fragmento suelto al final
-    // del nombre. No se elimina si el nombre tiene cuatro palabras o menos.
-    var palabras = String(nombre || '').trim().split(/\s+/).filter(Boolean);
-    if (palabras.length >= 5 && /^(AS|A5|A8)$/i.test(palabras[palabras.length - 1])) {
-      palabras.pop();
-    }
-    // Un nombre de INE puede tener varios apellidos; limitar solo el fragmento
-    // espurio detectado, sin truncar nombres legítimos.
-    return palabras.join(' ');
-  }
-
   function leerNombre(bloque) {
     var validas = [];
     bloque.forEach(function (l) {
@@ -609,7 +607,6 @@
       nombre = v[0];
       estado = 'revisar';
     }
-    nombre = limpiarNombreOCR(nombre);
     if (estado === 'revisar') nota = 'Verifica el nombre completo y su orden.';
     return { valor: nombre ? titulo(nombre) : '', estado: estado, nota: nota };
   }
@@ -890,7 +887,7 @@
         }
         if (previas.length >= 2) {
           var nom = previas.length >= 3 ? previas[2] + ' ' + previas[0] + ' ' + previas[1] : previas[1] + ' ' + previas[0];
-          campos.nombre = { valor: titulo(limpiarNombreOCR(nom)), estado: 'revisar', nota: 'No se leyó la etiqueta NOMBRE; se tomaron las líneas anteriores al domicilio. Verifica el nombre y su orden.' };
+          campos.nombre = { valor: titulo(nom), estado: 'revisar', nota: 'No se leyó la etiqueta NOMBRE; se tomaron las líneas anteriores al domicilio. Verifica el nombre y su orden.' };
         }
       }
     }
@@ -985,7 +982,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, onSnapshot, deleteDoc, updateDoc, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBqKSZ5zkDidsjWRZpb6lT1xronLWkKYsI",
@@ -1012,6 +1009,7 @@
         let listaUsuariosCloud = {};
         let sinUsuarios = false;
         let listaGlobalRegistros = [];
+        let registroEditandoId = null;
         let categoriaSeleccionada = 'Todos';
         let mediaStreamVivo = null;
         let workerOCR = null;
@@ -1244,7 +1242,7 @@
         function prepararLienzo(img, binarizar, desdeX) {
             const w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
             const sx = Math.round(w0 * (desdeX || 0)), sw = w0 - sx;
-            const escala = Math.min(2000 / Math.max(sw, h0), 2.5);
+            const escala = Math.min(1600 / Math.max(sw, h0), 2.0);
             const w = Math.round(sw * escala), h = Math.round(h0 * escala);
             const c = document.createElement('canvas');
             c.width = w; c.height = h;
@@ -1315,7 +1313,7 @@
             if (revisar.length) html += '<p class="mt-1"><b>Revisa (amarillo):</b> ' + esc(revisar.join(', ')) + '</p>';
             if (faltan.length) html += '<p class="mt-1"><b>No se pudo leer, captúralo:</b> ' + esc(faltan.join(', ')) + '</p>';
             if (notas.length) html += '<ul class="mt-1 list-disc pl-4">' + notas.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>';
-            html += '<p class="mt-1 text-slate-500">Si algo se ve mal, corrígelo a mano o vuelve a tomar la foto con más luz. Teléfono y cruzamientos (si no aparecen) se capturan a mano.</p>';
+            html += '<p class="mt-1 text-slate-500">Si el nombre sale desordenado o el domicilio no se interpreta, corrígelo a mano o vuelve a tomar la foto con la credencial completa, enfocada y sin reflejos. Teléfono y cruzamientos (si no aparecen) se capturan a mano.</p>';
             html += '<details class="mt-2"><summary class="cursor-pointer font-semibold text-slate-600">Ver texto leído (diagnóstico)</summary>' +
                 '<pre class="mt-1 whitespace-pre-wrap break-words text-[10px] leading-tight text-slate-600">' +
                 esc(r.lineas.map(INEParser.enmascarar).join('\n')) + '</pre></details>';
@@ -1348,27 +1346,35 @@
             try {
                 img = await cargarImagen(origen);
                 // Se prueban varias lecturas hasta tener nombre, edad, calle y sección.
+                // Ruta rápida: una lectura general primero; solo se hace un segundo
+                // intento si faltan campos importantes. Se limita el tamaño de imagen
+                // en prepararLienzo para acelerar especialmente en teléfonos.
                 const pasadas = [
                     { txt: 'Leyendo credencial...', bin: false, x: 0, psm: 6 },
-                    { txt: 'Leyendo solo la zona de texto...', bin: false, x: 0.3, psm: 6 },
-                    { txt: 'Mejorando la lectura...', bin: true, x: 0, psm: 11 },
-                    { txt: 'Último intento de lectura...', bin: true, x: 0.3, psm: 6 }
+                    { txt: 'Afinando lectura de campos faltantes...', bin: false, x: 0.28, psm: 6 }
                 ];
                 let resultado = null;
                 for (let i = 0; i < pasadas.length; i++) {
+                    if (i === 1 && INEParser.esSuficiente(resultado)) break;
                     const ps = pasadas[i];
-                    progreso(ps.txt, 15 + i * 20);
+                    progreso(ps.txt, i === 0 ? 18 : 55);
                     if (lienzo) { lienzo.width = 0; lienzo.height = 0; }
                     lienzo = prepararLienzo(img, ps.bin, ps.x);
                     const lectura = INEParser.interpretar(await leerTexto(lienzo, ps.psm));
                     resultado = INEParser.fusionar(resultado, lectura);
-                    if (INEParser.esSuficiente(resultado)) break;
                 }
 
-                // Si la sección sigue sin leerse, intenta también las rotaciones de 90°
-                // y 270°. Solo reemplaza el valor si el OCR encuentra cuatro dígitos.
-                if (!resultado.campos.seccion || resultado.campos.seccion.estado === 'vacio') {
-                    for (const grados of [90, 270]) {
+                // Si faltan campos clave (o la sección), intenta también las rotaciones
+                // de 90° y 270°. La fusión conserva discrepancias como 'revisar' en vez
+                // de escoger silenciosamente una lectura distinta.
+                const faltanCamposClave = ['nombre', 'calle', 'seccion'].some(k =>
+                    !resultado.campos[k] || resultado.campos[k].estado === 'vacio');
+                if (faltanCamposClave) {
+                    // Solo se prueba una rotación para no duplicar el tiempo de OCR.
+                    // En imágenes verticales se prueba 90°, en horizontales 270°.
+                    const wImg = img.width || img.naturalWidth, hImg = img.height || img.naturalHeight;
+                    const gradosPrueba = hImg > wImg ? [90] : [270];
+                    for (const grados of gradosPrueba) {
                         let rotada = null;
                         try {
                             rotada = await rotarImagenSiHaceFalta(img, grados);
@@ -1376,7 +1382,9 @@
                             const lecturaRotada = INEParser.interpretar(await leerTexto(lienzoRotado, 11));
                             resultado = INEParser.fusionar(resultado, lecturaRotada);
                             lienzoRotado.width = 0; lienzoRotado.height = 0;
-                            if (resultado.campos.seccion && resultado.campos.seccion.estado !== 'vacio') break;
+                            const completos = ['nombre', 'calle', 'seccion'].every(k =>
+                                resultado.campos[k] && resultado.campos[k].estado !== 'vacio');
+                            if (completos) break;
                         } catch (e) {
                             console.warn('No se pudo probar la rotación ' + grados + '°:', e);
                         } finally {
@@ -1385,10 +1393,12 @@
                     }
                 }
 
-                // Segundo intento dedicado a la sección: recorta la franja inferior
-                // derecha de la imagen, donde suele aparecer la etiqueta SECCIÓN.
-                // Se acepta solo un número de 4 dígitos y siempre se pide confirmación.
+                // OCR enfocado de sección solo si la lectura general no obtuvo
+                // cuatro dígitos; evita una pasada adicional en la mayoría de fotos.
                 try {
+                    if (resultado.campos.seccion && /^\d{4}$/.test(String(resultado.campos.seccion.valor || ''))) {
+                        // Ya hay cuatro dígitos; conservarlos para revisión manual.
+                    } else {
                     const w0 = img.width || img.naturalWidth, h0 = img.height || img.naturalHeight;
                     const zona = document.createElement('canvas');
                     // Recorte estrecho alrededor del campo SECCIÓN para reducir falsos positivos.
@@ -1423,6 +1433,7 @@
                         };
                     }
                     zona.width = 0; zona.height = 0;
+                    }
                 } catch (e) {
                     console.warn('No se pudo hacer la lectura enfocada de sección:', e);
                 }
@@ -1560,10 +1571,10 @@
             // Duplicados: se bloquean (por clave de elector o por nombre), como en la versión original.
             const nombreNorm = normalizarNombre(v.nombre);
             if (v.claveElector) {
-                const mismaClave = listaGlobalRegistros.find((r) => r.claveElector === v.claveElector);
+                const mismaClave = listaGlobalRegistros.find((r) => r.claveElector === v.claveElector && r.id !== registroEditandoId);
                 if (mismaClave) { mostrarToast('Esa clave de elector ya está registrada a nombre de "' + mismaClave.nombre + '".', 'error'); return; }
             }
-            if (listaGlobalRegistros.some((r) => normalizarNombre(r.nombre) === nombreNorm)) {
+            if (listaGlobalRegistros.some((r) => r.id !== registroEditandoId && normalizarNombre(r.nombre) === nombreNorm)) {
                 mostrarToast('El ciudadano "' + v.nombre + '" ya se encuentra registrado.', 'error');
                 return;
             }
@@ -1585,17 +1596,35 @@
                 timestamp: serverTimestamp()
             };
 
-            // Con conexión intermitente en campo, addDoc no termina hasta sincronizar:
-            // el formulario se limpia al instante y, si el guardado falla, se restauran los datos.
-            addDoc(coleccionRef, nuevoDato).catch((err) => {
+            try {
+                if (registroEditandoId) {
+                    const registroPrevio = listaGlobalRegistros.find((r) => r.id === registroEditandoId);
+                    if (!registroPrevio || !(esAdmin() || registroPrevio.registradoPor === usuarioActual)) {
+                        mostrarToast('No tienes permiso para editar este registro.', 'error'); return;
+                    }
+                    const { timestamp, ...datosActualizables } = nuevoDato;
+                    delete datosActualizables.registradoPor;
+                    delete datosActualizables.fecha;
+                    delete datosActualizables.hora;
+                    await updateDoc(doc(db, 'registros', registroEditandoId), datosActualizables);
+                    cancelarEdicionRegistro();
+                    mostrarToast('Registro actualizado correctamente.');
+                } else {
+                    // Guardado normal, conservando el flujo de captura rápida.
+                    addDoc(coleccionRef, nuevoDato).catch((err) => {
+                        console.error(err);
+                        restaurarFormulario(v);
+                        mostrarToast('No se pudo guardar el registro. Tus datos se restauraron en el formulario.', 'error');
+                    });
+                    form.reset();
+                    limpiarMarcas();
+                    actualizarTiempo();
+                    mostrarToast(navigator.onLine ? '¡Registro guardado!' : 'Guardado en el teléfono; se enviará al volver la conexión.');
+                }
+            } catch (err) {
                 console.error(err);
-                restaurarFormulario(v);
-                mostrarToast('No se pudo guardar el registro. Tus datos se restauraron en el formulario.', 'error');
-            });
-            form.reset();
-            limpiarMarcas();
-            actualizarTiempo();
-            mostrarToast(navigator.onLine ? '¡Registro guardado!' : 'Guardado en el teléfono; se enviará al volver la conexión.');
+                mostrarToast('No se pudo guardar el cambio. Revisa la conexión e inténtalo de nuevo.', 'error');
+            }
         });
 
         onSnapshot(coleccionRef, (snapshot) => {
@@ -1657,7 +1686,7 @@
             tbody.innerHTML = datos.map((i) => {
                 const puedeBorrar = esAdmin() || i.registradoPor === usuarioActual;
                 const accion = puedeBorrar
-                    ? '<button data-borrar="' + esc(i.id) + '" class="text-rose-600 hover:text-rose-800" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button>'
+                    ? '<div class="inline-flex items-center gap-3"><button data-editar="' + esc(i.id) + '" class="text-blue-600 hover:text-blue-800" aria-label="Editar registro" title="Editar"><i class="fa-solid fa-pen-to-square"></i></button><button data-borrar="' + esc(i.id) + '" class="text-rose-600 hover:text-rose-800" aria-label="Eliminar"><i class="fa-solid fa-trash-can"></i></button></div>'
                     : '<span class="text-slate-300"><i class="fa-solid fa-lock"></i></span>';
                 return '<tr class="hover:bg-slate-50 transition border-b border-slate-100">' +
                     '<td class="p-3 font-semibold text-slate-800">' + esc(i.nombre) + '</td>' +
@@ -1670,7 +1699,33 @@
             $('totalRegistros').textContent = 'Total: ' + datos.length;
         }
 
+        window.editarRegistro = function (id) {
+            const r = listaGlobalRegistros.find((x) => x.id === id);
+            if (!r || !(esAdmin() || r.registradoPor === usuarioActual)) {
+                mostrarToast('No tienes permiso para editar este registro.', 'error'); return;
+            }
+            registroEditandoId = id;
+            ['nombre','claveElector','edad','calle','cruzamientos','numero','seccion','telefono','facebook'].forEach((k) => {
+                $(k).value = (r[k] == null || r[k] === 'No proporcionado') ? '' : r[k];
+            });
+            $('btnGuardar').innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Guardar cambios';
+            $('btnCancelarEdicion').classList.remove('hidden');
+            $('nombre').scrollIntoView({behavior:'smooth', block:'center'});
+            $('nombre').focus({preventScroll:true});
+            mostrarToast('Editando: ' + r.nombre);
+        };
+        window.cancelarEdicionRegistro = function () {
+            registroEditandoId = null;
+            form.reset();
+            $('btnGuardar').innerHTML = '<i class="fa-solid fa-user-plus mr-1"></i> Guardar Registro';
+            $('btnCancelarEdicion').classList.add('hidden');
+            limpiarMarcas();
+            actualizarTiempo();
+        };
+
         $('tablaCuerpo').addEventListener('click', async (e) => {
+            const eb = e.target.closest('[data-editar]');
+            if (eb) { editarRegistro(eb.getAttribute('data-editar')); return; }
             const b = e.target.closest('[data-borrar]');
             if (!b) return;
             const id = b.getAttribute('data-borrar');
@@ -1707,6 +1762,44 @@
             XLSX.writeFile(wb, 'Activismo_2027.xlsx');
         };
 
+        window.exportarPDF = function () {
+            if (!esAdmin()) { mostrarToast('Solo el administrador puede generar el informe PDF.', 'error'); return; }
+            if (!listaGlobalRegistros.length) { mostrarToast('No hay registros para incluir en el informe.', 'error'); return; }
+            if (!window.jspdf || !window.jspdf.jsPDF) { mostrarToast('No se pudo cargar el generador PDF. Revisa la conexión.', 'error'); return; }
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            const margen = 12, ancho = 273;
+            pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16);
+            pdf.text('Activismo 2027 — Informe de registros', margen, 15);
+            pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9);
+            pdf.text('Generado: ' + new Date().toLocaleString('es-MX'), margen, 21);
+            pdf.text('Total de registros: ' + listaGlobalRegistros.length, margen, 26);
+            const cols = [
+                ['Nombre', 'nombre', 37], ['Edad', 'edad', 12], ['Sección', 'seccion', 15],
+                ['Calle y número', null, 40], ['Cruzamientos', 'cruzamientos', 32], ['Teléfono', 'telefono', 23],
+                ['Fecha', 'fecha', 20], ['Registrado por', 'registradoPor', 25]
+            ];
+            let y = 33, x = margen, rowH = 7;
+            const drawHeader = () => {
+                pdf.setFillColor(180, 25, 25); pdf.setTextColor(255,255,255); pdf.setFont('helvetica','bold'); pdf.setFontSize(8);
+                let xx = margen; cols.forEach(c => { pdf.rect(xx,y,c[2],rowH,'F'); pdf.text(c[0],xx+1.5,y+4.7); xx += c[2]; });
+                y += rowH; pdf.setTextColor(35,35,35); pdf.setFont('helvetica','normal');
+            };
+            drawHeader();
+            listaGlobalRegistros.forEach((r, idx) => {
+                if (y > 185) { pdf.addPage(); y = 15; drawHeader(); }
+                const vals = cols.map(c => c[1] === null ? [r.calle, r.numero ? '#' + r.numero : ''].filter(Boolean).join(' ') : r[c[1]]);
+                let xx = margen;
+                vals.forEach((v,j) => {
+                    pdf.setDrawColor(220,220,220); pdf.rect(xx,y,cols[j][2],rowH);
+                    const texto = pdf.splitTextToSize(String(v == null ? '' : v), cols[j][2]-3).slice(0,1);
+                    pdf.text(texto,xx+1.5,y+4.5); xx += cols[j][2];
+                });
+                y += rowH;
+            });
+            pdf.save('Activismo_2027_Informe.pdf');
+        };
+
         window.exportarCSV = function () {
             if (!esAdmin()) { mostrarToast('Solo el administrador puede exportar.', 'error'); return; }
             if (!listaGlobalRegistros.length) { mostrarToast('No hay registros para exportar.', 'error'); return; }
@@ -1722,6 +1815,28 @@
         };
 
         actualizarPermisosUI();
+    </script>
+
+    <script>
+      // Instalación opcional como PWA en navegadores compatibles.
+      let deferredInstallPrompt = null;
+      const installBtn = document.getElementById('installAppBtn');
+      window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault(); deferredInstallPrompt = event;
+        if (installBtn) installBtn.classList.remove('hidden');
+      });
+      if (installBtn) installBtn.addEventListener('click', async () => {
+        if (!deferredInstallPrompt) {
+          alert('Para instalar: abre el menú del navegador y elige “Añadir a pantalla de inicio” o “Instalar app”.');
+          return;
+        }
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null; installBtn.classList.add('hidden');
+      });
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(err => console.warn('PWA no disponible:', err)));
+      }
     </script>
 </body>
 </html>

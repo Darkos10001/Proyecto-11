@@ -1,0 +1,15 @@
+ACTIVISMO 2027 - PUBLICAR EN GITHUB PAGES
+
+1. Entra al repositorio de GitHub donde ya publicas la página.
+2. Pulsa Add file > Upload files.
+3. Sube index.html, manifest.json, service-worker.js y la carpeta icons completa.
+   Si GitHub pregunta por reemplazar index.html, confirma solo si deseas actualizar la versión publicada.
+4. Pulsa Commit changes. Espera a que GitHub Pages termine de publicar.
+5. Abre la URL HTTPS de GitHub Pages desde el teléfono.
+   Android/Chrome: menú ⋮ > Instalar app o Añadir a pantalla de inicio.
+   iPhone/Safari: Compartir > Añadir a pantalla de inicio.
+
+NOTAS
+- Deben permanecer juntos index.html, manifest.json, service-worker.js e icons/.
+- La app necesita internet para Firebase y para algunas bibliotecas externas. El caché conserva la estructura básica, no garantiza que el sistema completo funcione sin conexión.
+- Este paquete conserva la configuración Firebase que ya estaba en el HTML original. Revisa las reglas y permisos de Firebase antes de publicar; no compartas credenciales administrativas.
